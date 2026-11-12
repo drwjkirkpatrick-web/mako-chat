@@ -1,0 +1,21 @@
+# --- Node / client ---
+node_modules/
+dist/
+build/
+out/
+release/
+*.log
+
+# --- Environment & secrets (never commit) ---
+.env
+.env.*
+*.signing.key
+server/data/
+backups/
+
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
