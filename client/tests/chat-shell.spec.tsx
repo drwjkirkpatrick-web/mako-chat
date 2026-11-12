@@ -10,14 +10,19 @@ vi.mock("../src/matrix/client", () => ({
   stopSync: vi.fn(),
   listRooms: vi.fn(),
   getMessages: vi.fn(),
+  getRoomReceipts: vi.fn(),
   sendText: vi.fn(),
+  sendTyping: vi.fn(),
+  markRoomRead: vi.fn(),
   startDirectMessage: vi.fn(),
   logout: vi.fn(),
 }));
 
 import {
   getMessages,
+  getRoomReceipts,
   listRooms,
+  markRoomRead,
   sendText,
   startDirectMessage,
   startSync,
@@ -35,10 +40,12 @@ const rooms: MakoRoom[] = [
   {
     roomId: "!r1", name: "Jdoe", isDirect: true, membersCount: 2,
     lastActivityTs: 200, preview: "jdoe: hello",
+    otherPresence: "online", typingNames: [],
   },
   {
     roomId: "!r2", name: "Announcements", isDirect: false, membersCount: 9,
     lastActivityTs: 100, preview: "admin: welcome",
+    otherPresence: "unknown", typingNames: [],
   },
 ];
 
@@ -53,6 +60,7 @@ function wireSync() {
 beforeEach(() => {
   vi.mocked(stopSync).mockReset();
   vi.mocked(getMessages).mockReset();
+  vi.mocked(getRoomReceipts).mockReset().mockReturnValue([]);
   vi.mocked(sendText).mockReset();
   vi.mocked(startDirectMessage).mockReset();
   vi.mocked(startSync).mockReset();
@@ -117,3 +125,45 @@ describe("ChatShell", () => {
     expect(logout).toHaveBeenCalled();
   });
 });
+
+describe("ChatShell: Batch 4 signals", () => {
+  it("shows a typing preview in the room list when someone is typing", async () => {
+    vi.mocked(listRooms).mockReturnValue([
+      {
+        roomId: "!r1", name: "Jdoe", isDirect: true, membersCount: 2,
+        lastActivityTs: 200, preview: "jdoe is typing…",
+        otherPresence: "online", typingNames: ["jdoe"],
+      },
+    ]);
+    render(<ChatShell session={session} onSignedOut={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText("jdoe is typing…")).toBeTruthy());
+  });
+
+  it("renders the typing line and Seen state in the conversation", async () => {
+    vi.mocked(getMessages).mockReturnValue([
+      { eventId: "$1", senderId: "@jdoe:mako", senderName: "jdoe", body: "hey", ts: 1, isMine: false },
+      { eventId: "$2", senderId: session.userId, senderName: "me", body: "hi", ts: 2, isMine: true },
+    ]);
+    vi.mocked(getRoomReceipts).mockReturnValue([
+      { userId: "@jdoe:mako", eventId: "$2", ts: 3 },
+    ]);
+    vi.mocked(listRooms).mockReturnValue([
+      {
+        roomId: "!r1", name: "Jdoe", isDirect: true, membersCount: 2,
+        lastActivityTs: 200, preview: "jdoe is typing…",
+        otherPresence: "online", typingNames: ["jdoe"],
+      },
+    ]);
+    render(<ChatShell session={session} onSignedOut={vi.fn()} />);
+    await waitFor(() => screen.getByText("Jdoe"));
+    fireEvent.click(screen.getByText("Jdoe"));
+    // NOTE: "jdoe is typing…" now exists in BOTH the sidebar preview and
+    // the conversation's typing line — query the element, not the text.
+    await waitFor(() =>
+      expect(document.querySelector(".typing-line")?.textContent).toContain("jdoe is typing…"),
+    );
+    await waitFor(() => expect(screen.getByText("Seen")).toBeTruthy());
+    expect(markRoomRead).toHaveBeenCalled();
+  });
+});
+

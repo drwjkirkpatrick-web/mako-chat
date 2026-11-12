@@ -14,13 +14,18 @@ import {
   ClientEvent,
   EventType,
   Preset,
+  ReceiptType,
   RoomEvent,
+  RoomMemberEvent,
   SyncState,
+  UserEvent,
   createClient,
-  type SyncStateData,
   type MatrixClient,
   type MatrixEvent,
   type Room,
+  type RoomMember,
+  type SyncStateData,
+  type User,
 } from "matrix-js-sdk";
 
 export interface MakoSession {
@@ -194,6 +199,20 @@ export interface MakoRoom {
   membersCount: number;
   lastActivityTs: number; // ms epoch; 0 = no messages yet
   preview: string;
+  /** The OTHER member's presence — DMs only; "unknown" for groups. */
+  otherPresence: MakoPresence;
+  /** Display names of members typing right now (never includes me). */
+  typingNames: string[];
+}
+
+/** A member's presence, simplified. "unknown" = we have no data yet. */
+export type MakoPresence = "online" | "offline" | "unavailable" | "unknown";
+
+/** Where another member's read receipt points (they read up to this event). */
+export interface MakoReceipt {
+  userId: string;
+  eventId: string;
+  ts: number;
 }
 
 /** One chat message, as the UI sees it. */
@@ -234,10 +253,16 @@ export async function startSync(cb: MakoSyncCallbacks): Promise<void> {
   client.on(RoomEvent.Timeline, onTimelineEvent);
   client.on(RoomEvent.Name, onNewRoomName);
   client.on(ClientEvent.AccountData, onAccountData);
+  client.on(RoomEvent.Receipt, onReceipt);
+  client.on(RoomMemberEvent.Typing, onMemberTyping);
+  client.on(UserEvent.Presence, onUserPresence);
 
   // initialSyncLimit: how much recent history the server sends on the
   // FIRST sync. 30 rooms' worth is plenty for institutional chat.
   await client.startClient({ initialSyncLimit: 30 });
+  // Tell the world we're here (Batch 4: presence). Fire-and-forget —
+  // presence is a courtesy, never a gate; failure must not block syncing.
+  void client.setPresence({ presence: "online" }).catch(() => {});
   cb.onStateChange("connecting");
 }
 
@@ -298,6 +323,21 @@ function onAccountData(event: MatrixEvent): void {
   if (event.getType() === "m.direct") void refreshDmMap();
 }
 
+/** Read receipts moved — someone caught up on this room (Batch 4). */
+function onReceipt(_event: MatrixEvent, room: Room): void {
+  syncCallbacks?.onRoomUpdated(room.roomId);
+}
+
+/** A member started or stopped typing in a room (Batch 4). */
+function onMemberTyping(_event: MatrixEvent, member: RoomMember): void {
+  syncCallbacks?.onRoomUpdated(member.roomId);
+}
+
+/** Someone's presence (online/offline) changed (Batch 4). */
+function onUserPresence(_event: MatrixEvent | undefined, _user: User): void {
+  syncCallbacks?.onRoomsChanged(); // refresh the presence dots
+}
+
 async function refreshDmMap(): Promise<void> {
   const map = await client?.getAccountDataFromServer(EventType.Direct);
   const next = new Set<string>();
@@ -315,12 +355,22 @@ async function refreshDmMap(): Promise<void> {
  */
 export function stopSync(): void {
   if (!client || !syncRunning) return;
+  // Courtesy (Batch 4): tell the world we're gone BEFORE pulling the plug.
+  // If the connection is already dead this throws into the void — fine.
+  try {
+    void client.setPresence({ presence: "offline" }).catch(() => {});
+  } catch {
+    /* pre-Batch-4 test fakes may not implement setPresence — harmless */
+  }
   client.stopClient();
   client.off(ClientEvent.Sync, onSyncState);
   client.off(ClientEvent.Room, onNewRoom);
   client.off(RoomEvent.Timeline, onTimelineEvent);
   client.off(RoomEvent.Name, onNewRoomName);
   client.off(ClientEvent.AccountData, onAccountData);
+  client.off(RoomEvent.Receipt, onReceipt);
+  client.off(RoomMemberEvent.Typing, onMemberTyping);
+  client.off(UserEvent.Presence, onUserPresence);
   syncRunning = false;
   syncCallbacks = null;
 }
@@ -341,20 +391,37 @@ function isBadRoomName(name: string): boolean {
 
 function toMakoRoom(room: Room): MakoRoom {
   const joined = room.getJoinedMembers();
+  const others = joined.filter((m) => m.userId !== session?.userId);
   // WHY the fallback in the DM test: the creator marks m.direct, but the
   // OTHER side of a fresh DM has no account data yet — Element uses the
   // same "two people" heuristic. Two-member rooms = DMs in our world.
   const isDirect = dmRoomIds.has(room.roomId) || joined.length === 2;
   const msgs = timelineMessages(room);
   const last = msgs[msgs.length - 1];
+  const typingNames = joined
+    .filter((m) => m.typing && m.userId !== session?.userId)
+    .map((m) => m.name);
   return {
     roomId: room.roomId,
     name: displayNameFor(room, isDirect),
     isDirect,
     membersCount: joined.length,
+    // DMs show the OTHER person's presence dot; groups have no single dot.
+    otherPresence:
+      isDirect && others.length > 0 ? getPresenceOf(others[0].userId) : "unknown",
+    typingNames,
     lastActivityTs: last ? last.ts : 0,
-    preview: last ? `${last.senderName}: ${last.body}`.slice(0, 60) : "No messages yet",
+    preview: typingNames.length > 0
+      ? typingPreview(typingNames)
+      : last
+        ? `${last.senderName}: ${last.body}`.slice(0, 60)
+        : "No messages yet",
   };
+}
+
+/** "jdoe is typing…" / "jdoe, ana are typing…" for the room preview. */
+function typingPreview(names: string[]): string {
+  return `${names.join(", ")} ${names.length === 1 ? "is" : "are"} typing…`;
 }
 
 /** People expect a DM to be NAMED after the other person — make it so. */
@@ -422,4 +489,64 @@ export async function startDirectMessage(otherUserId: string): Promise<string> {
   dm[otherUserId] = [...existing, room_id];
   await client.setAccountData(EventType.Direct, dm);
   return room_id;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PRESENCE / TYPING / READ RECEIPTS (Batch 4).
+// All three are "lightweight social signals" — small, fire-and-forget
+// server updates with no delivery guarantees. The UI treats them as
+// hints, never as facts.
+// ═════════════════════════════════════════════════════════════════════════
+
+/** Someone's presence from the local cache — no server call, no waiting. */
+export function getPresenceOf(userId: string): MakoPresence {
+  const p = client?.getUser(userId)?.presence;
+  if (p === "online" || p === "unavailable" || p === "offline") return p;
+  return "unknown"; // no data yet, or the SDK gave us something unexpected
+}
+
+/** Announce MY presence (used automatically by the sync loop). */
+export async function setMyPresence(presence: "online" | "offline"): Promise<void> {
+  if (!client) return;
+  await client.setPresence({ presence });
+}
+
+/**
+ * Tell the room I am / am no longer typing. The 10-second timeout means
+ * the server forgets on its own if we never send the "stopped" signal
+ * (crash, window closed) — no stuck "typing…" ghosts.
+ */
+export async function sendTyping(roomId: string, isTyping: boolean): Promise<void> {
+  if (!client) return;
+  await client.sendTyping(roomId, isTyping, 10_000);
+}
+
+/**
+ * Mark everything in the room as read: sends a public read receipt at the
+ * room's newest event. Public (m.read, not the private variant) so the
+ * people we chat with can show "Seen".
+ */
+export async function markRoomRead(roomId: string): Promise<void> {
+  const room = client?.getRoom(roomId);
+  if (!room) return;
+  const events = room.getLiveTimeline().getEvents();
+  const last = events[events.length - 1];
+  if (!last) return;
+  await client?.sendReadReceipt(last, ReceiptType.Read, true);
+}
+
+/**
+ * Where each other member's read receipt points, right now — the data
+ * behind "Seen". My own receipt is deliberately left out.
+ */
+export function getRoomReceipts(roomId: string): MakoReceipt[] {
+  const room = client?.getRoom(roomId);
+  if (!room || !session) return [];
+  const out: MakoReceipt[] = [];
+  for (const member of room.getJoinedMembers()) {
+    if (member.userId === session.userId) continue;
+    const receipt = room.getReadReceiptForUserId(member.userId, false, ReceiptType.Read);
+    if (receipt) out.push({ userId: member.userId, eventId: receipt.eventId, ts: receipt.data.ts });
+  }
+  return out;
 }

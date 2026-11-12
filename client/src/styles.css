@@ -242,3 +242,32 @@ body {
   font-size: 14px;
   margin: 0 0 16px;
 }
+
+/* ---------- Batch 4: presence, typing, receipts ---------- */
+.room-avatar { position: relative; }
+.presence-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--deep-sea);
+  background: #6b7a80; /* unknown / offline */
+}
+.p-online { background: var(--ok); }
+.p-unavailable { background: #e0a63c; }
+
+.typing-line {
+  padding: 4px 18px;
+  font-size: 12px;
+  color: var(--teal);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.msg-seen {
+  font-size: 11px;
+  color: rgba(232, 244, 247, 0.55);
+  text-align: right;
+  margin: -2px 4px 2px;
+}

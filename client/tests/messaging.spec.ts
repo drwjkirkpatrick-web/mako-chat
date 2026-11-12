@@ -7,7 +7,10 @@ import type { MatrixClient, Room } from "matrix-js-sdk";
 vi.mock("matrix-js-sdk", () => ({
   createClient: vi.fn(),
   ClientEvent: { Sync: "sync", Room: "Room", AccountData: "accountData" },
-  RoomEvent: { Timeline: "Room.timeline", Name: "Room.name", MyMembership: "Room.myMembership" },
+  RoomEvent: { Timeline: "Room.timeline", Name: "Room.name", MyMembership: "Room.myMembership", Receipt: "Room.receipt" },
+  RoomMemberEvent: { Typing: "RoomMember.typing" },
+  UserEvent: { Presence: "User.presence" },
+  ReceiptType: { Read: "m.read" },
   Preset: { TrustedPrivateChat: "trusted_private_chat" },
   EventType: { Direct: "m.direct" },
   SyncState: {
@@ -45,6 +48,10 @@ function makeFakeClient(): MatrixClient {
     createRoom: vi.fn().mockResolvedValue({ room_id: "!new" }),
     getAccountDataFromServer: vi.fn().mockResolvedValue(null),
     setAccountData: vi.fn().mockResolvedValue({}),
+    setPresence: vi.fn().mockResolvedValue(undefined),
+    sendTyping: vi.fn().mockResolvedValue({}),
+    sendReadReceipt: vi.fn().mockResolvedValue({}),
+    getUser: vi.fn(() => null),
   });
   return fake as unknown as MatrixClient;
 }
@@ -55,6 +62,8 @@ function makeFakeRoom(roomId: string, opts: {
   joined?: string[];
   messages?: Array<{ sender: string; body: string; ts: number }>;
   membership?: string;
+  typing?: string[];
+  receipts?: Record<string, { eventId: string; data: { ts: number } }>;
 } = {}): Room {
   const joined = opts.joined ?? [ME];
   const events = (opts.messages ?? []).map((m, i) => ({
@@ -69,9 +78,14 @@ function makeFakeRoom(roomId: string, opts: {
     name: opts.name ?? "Some Room",
     getMyMembership: () => opts.membership ?? "join",
     getJoinedMembers: () =>
-      joined.map((id) => ({ userId: id, name: id.replace(/^@/, "").split(":")[0] })),
+      joined.map((id) => ({
+        userId: id,
+        name: id.replace(/^@/, "").split(":")[0],
+        typing: (opts.typing ?? []).includes(id),
+      })),
     getMember: (id: string) => ({ userId: id, name: id.replace(/^@/, "").split(":")[0] }),
     getLiveTimeline: () => ({ getEvents: () => events }),
+    getReadReceiptForUserId: (uid: string) => opts.receipts?.[uid] ?? null,
   };
   return room as unknown as Room;
 }
@@ -259,5 +273,111 @@ describe("stopSync", () => {
     expect(fake.stopClient).toHaveBeenCalled();
     expect(listenerCount(fake, "sync")).toBe(0);
     expect(listenerCount(fake, "Room.timeline")).toBe(0);
+  });
+});
+
+describe("presence (Batch 4)", () => {
+  it("announces online when the loop starts and offline when it stops", async () => {
+    const fake = makeFakeClient();
+    await loginWithFake(fake);
+    const cb = { onStateChange: vi.fn(), onRoomsChanged: vi.fn(), onRoomUpdated: vi.fn() };
+    await matrix.startSync(cb);
+    expect(fake["setPresence"]).toHaveBeenCalledWith({ presence: "online" });
+
+    matrix.stopSync();
+    expect(fake["setPresence"]).toHaveBeenCalledWith({ presence: "offline" });
+  });
+
+  it("exposes the other member's presence and reacts to presence events", async () => {
+    const fake = makeFakeClient();
+    (fake.getUser as ReturnType<typeof vi.fn>).mockImplementation(
+      (id: string) => (id === "@jdoe:mako" ? { userId: id, presence: "online" } : null),
+    );
+    const room = makeFakeRoom("!dm", { joined: [ME, "@jdoe:mako"] });
+    (fake.getRooms as ReturnType<typeof vi.fn>).mockReturnValue([room]);
+    await loginWithFake(fake);
+
+    const rooms = matrix.listRooms();
+    expect(rooms[0].otherPresence).toBe("online");
+    expect(matrix.getPresenceOf("@nobody:mako")).toBe("unknown"); // no data
+
+    const cb = { onStateChange: vi.fn(), onRoomsChanged: vi.fn(), onRoomUpdated: vi.fn() };
+    await matrix.startSync(cb);
+    fire(fake, "User.presence", undefined, { userId: "@jdoe:mako" });
+    await vi.waitFor(() => expect(cb.onRoomsChanged).toHaveBeenCalled());
+  });
+});
+
+describe("typing (Batch 4)", () => {
+  it("shows typing members in the room preview and relays typing events", async () => {
+    const fake = makeFakeClient();
+    const room = makeFakeRoom("!dm", { joined: [ME, "@jdoe:mako"], typing: ["@jdoe:mako"] });
+    (fake.getRooms as ReturnType<typeof vi.fn>).mockReturnValue([room]);
+    await loginWithFake(fake);
+
+    const rooms = matrix.listRooms();
+    expect(rooms[0].typingNames).toEqual(["jdoe"]);
+    expect(rooms[0].preview).toBe("jdoe is typing…");
+
+    const cb = { onStateChange: vi.fn(), onRoomsChanged: vi.fn(), onRoomUpdated: vi.fn() };
+    await matrix.startSync(cb);
+    fire(fake, "RoomMember.typing", undefined, { roomId: "!dm", userId: "@jdoe:mako", typing: true });
+    expect(cb.onRoomUpdated).toHaveBeenCalledWith("!dm");
+  });
+
+  it("never lists me as typing", async () => {
+    const fake = makeFakeClient();
+    const room = makeFakeRoom("!dm", { joined: [ME, "@jdoe:mako"], typing: [ME] });
+    (fake.getRooms as ReturnType<typeof vi.fn>).mockReturnValue([room]);
+    await loginWithFake(fake);
+    expect(matrix.listRooms()[0].typingNames).toEqual([]);
+  });
+
+  it("sends typing with a 10 s server timeout", async () => {
+    const fake = makeFakeClient();
+    await loginWithFake(fake);
+    await matrix.sendTyping("!dm", true);
+    expect(fake["sendTyping"]).toHaveBeenCalledWith("!dm", true, 10000);
+  });
+});
+
+describe("read receipts (Batch 4)", () => {
+  it("marks a room read at its newest event, publicly", async () => {
+    const fake = makeFakeClient();
+    const room = makeFakeRoom("!dm", {
+      joined: [ME, "@jdoe:mako"],
+      messages: [{ sender: "@jdoe:mako", body: "latest", ts: 5 }],
+    });
+    (fake.getRoom as ReturnType<typeof vi.fn>).mockReturnValue(room);
+    await loginWithFake(fake);
+
+    await matrix.markRoomRead("!dm");
+    const events = room.getLiveTimeline().getEvents();
+    expect(fake["sendReadReceipt"]).toHaveBeenCalledWith(events[events.length - 1], "m.read", true);
+  });
+
+  it("collects other members' receipts, never mine", async () => {
+    const fake = makeFakeClient();
+    const room = makeFakeRoom("!dm", {
+      joined: [ME, "@jdoe:mako"],
+      receipts: { "@jdoe:mako": { eventId: "$ev1", data: { ts: 55 } } },
+    });
+    (fake.getRoom as ReturnType<typeof vi.fn>).mockReturnValue(room);
+    await loginWithFake(fake);
+
+    const receipts = matrix.getRoomReceipts("!dm");
+    expect(receipts).toEqual([{ userId: "@jdoe:mako", eventId: "$ev1", ts: 55 }]);
+  });
+
+  it("relays receipt events to the room they belong to", async () => {
+    const fake = makeFakeClient();
+    const room = makeFakeRoom("!dm", { joined: [ME, "@jdoe:mako"] });
+    (fake.getRooms as ReturnType<typeof vi.fn>).mockReturnValue([room]);
+    await loginWithFake(fake);
+    const cb = { onStateChange: vi.fn(), onRoomsChanged: vi.fn(), onRoomUpdated: vi.fn() };
+    await matrix.startSync(cb);
+
+    fire(fake, "Room.receipt", { getType: () => "m.receipt" }, room);
+    expect(cb.onRoomUpdated).toHaveBeenCalledWith("!dm");
   });
 });

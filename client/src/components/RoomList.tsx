@@ -61,6 +61,9 @@ export function RoomList({
               >
                 <span className="room-avatar" aria-hidden="true">
                   {room.isDirect ? "🦈" : "👥"}
+                  {room.isDirect && (
+                    <span className={"presence-dot p-" + room.otherPresence} />
+                  )}
                 </span>
                 <span className="room-text">
                   <span className="room-name">{room.name}</span>

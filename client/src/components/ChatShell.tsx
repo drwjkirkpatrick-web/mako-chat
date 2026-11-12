@@ -2,13 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { BRAND } from "../brand";
 import {
   getMessages,
+  getRoomReceipts,
   listRooms,
   logout,
+  markRoomRead,
   sendText,
+  sendTyping,
   startDirectMessage,
   startSync,
   stopSync,
   type MakoMessage,
+  type MakoReceipt,
   type MakoRoom,
   type MakoSession,
   type MakoSyncState,
@@ -40,6 +44,7 @@ export function ChatShell({
   const [rooms, setRooms] = useState<MakoRoom[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MakoMessage[]>([]);
+  const [receipts, setReceipts] = useState<MakoReceipt[]>([]);
   const [status, setStatus] = useState<MakoSyncState>("connecting");
   const [newChatError, setNewChatError] = useState<string | null>(null);
 
@@ -57,8 +62,12 @@ export function ChatShell({
       },
       onRoomsChanged: () => setRooms(listRooms()),
       onRoomUpdated: (roomId) => {
-        setRooms(listRooms()); // previews + ordering may have moved
-        if (roomId === selectedIdRef.current) setMessages(getMessages(roomId));
+        // previews, typing lines, ordering may all have moved
+        setRooms(listRooms());
+        if (roomId === selectedIdRef.current) {
+          setMessages(getMessages(roomId));
+          setReceipts(getRoomReceipts(roomId));
+        }
       },
     }).catch(() => onSignedOut("Could not start syncing. Please sign in again."));
 
@@ -75,6 +84,7 @@ export function ChatShell({
     selectedIdRef.current = roomId;
     setSelectedId(roomId);
     setMessages(getMessages(roomId));
+    setReceipts(getRoomReceipts(roomId));
   }
 
   async function handleSend(body: string) {
@@ -82,6 +92,17 @@ export function ChatShell({
     await sendText(selectedIdRef.current, body);
     // NOTE: no manual refresh — the SDK's local echo fires a Room.timeline
     // event, which the sync callback above already translates.
+  }
+
+  async function handleTyping(isTyping: boolean) {
+    if (!selectedIdRef.current) return;
+    await sendTyping(selectedIdRef.current, isTyping);
+  }
+
+  // Mark the open conversation read whenever its messages change — this
+  // is what makes "Seen" appear for the people we're chatting with.
+  function handleRead() {
+    if (selectedIdRef.current) void markRoomRead(selectedIdRef.current);
   }
 
   async function handleNewChat(raw: string) {
@@ -137,8 +158,11 @@ export function ChatShell({
           <Conversation
             room={selectedRoom}
             messages={messages}
+            receipts={receipts}
             myUserId={session.userId}
             onSend={handleSend}
+            onTyping={handleTyping}
+            onRead={handleRead}
           />
         ) : (
           <div className="empty-state">

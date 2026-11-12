@@ -63,7 +63,7 @@
 | 1 | Server stack: docker-compose, homeserver template, first-run, backup, deploy guide | done (config-review; live test at deploy) |
 | 2 | Client foundation: Electron+React+Vite scaffold, branding, login, session | done (16 tests; login + error paths verified in browser) |
 | 3 | Messaging core: sync loop, room list, DMs, timeline, send/receive | done (40 tests; offline shell + validation browser-verified) |
-| 4 | Presence, typing, read receipts | — |
+| 4 | Presence, typing, read receipts | done (61 tests; offline shell regression-checked in browser) |
 | 5 | File sharing: upload/download/room files | — |
 | 6 | Profiles, avatars, desktop notifications | — |
 | 7 | Admin mode: users, groups, announcements, storage stats | — |

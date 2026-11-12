@@ -11,7 +11,10 @@ import type { MatrixClient } from "matrix-js-sdk";
 vi.mock("matrix-js-sdk", () => ({
   createClient: vi.fn(),
   ClientEvent: { Sync: "sync", Room: "Room", AccountData: "accountData" },
-  RoomEvent: { Timeline: "Room.timeline", Name: "Room.name", MyMembership: "Room.myMembership" },
+  RoomEvent: { Timeline: "Room.timeline", Name: "Room.name", MyMembership: "Room.myMembership", Receipt: "Room.receipt" },
+  RoomMemberEvent: { Typing: "RoomMember.typing" },
+  UserEvent: { Presence: "User.presence" },
+  ReceiptType: { Read: "m.read" },
   Preset: { TrustedPrivateChat: "trusted_private_chat" },
   EventType: { Direct: "m.direct" },
   SyncState: {
