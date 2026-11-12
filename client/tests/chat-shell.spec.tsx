@@ -13,6 +13,7 @@ vi.mock("../src/matrix/client", () => ({
   getRoomReceipts: vi.fn(),
   sendText: vi.fn(),
   sendTyping: vi.fn(),
+  sendFile: vi.fn(),
   markRoomRead: vi.fn(),
   startDirectMessage: vi.fn(),
   logout: vi.fn(),
@@ -23,6 +24,7 @@ import {
   getRoomReceipts,
   listRooms,
   markRoomRead,
+  sendFile,
   sendText,
   startDirectMessage,
   startSync,
@@ -62,6 +64,7 @@ beforeEach(() => {
   vi.mocked(getMessages).mockReset();
   vi.mocked(getRoomReceipts).mockReset().mockReturnValue([]);
   vi.mocked(sendText).mockReset();
+  vi.mocked(sendFile).mockReset();
   vi.mocked(startDirectMessage).mockReset();
   vi.mocked(startSync).mockReset();
   wireSync();
@@ -85,8 +88,8 @@ describe("ChatShell", () => {
 
   it("opens a room: its messages appear and typing sends through the wrapper", async () => {
     vi.mocked(getMessages).mockReturnValue([
-      { eventId: "$1", senderId: "@jdoe:mako", senderName: "jdoe", body: "hey", ts: 1, isMine: false },
-      { eventId: "$2", senderId: session.userId, senderName: "me", body: "hi", ts: 2, isMine: true },
+      { eventId: "$1", senderId: "@jdoe:mako", senderName: "jdoe", body: "hey", ts: 1, isMine: false, kind: "text" },
+      { eventId: "$2", senderId: session.userId, senderName: "me", body: "hi", ts: 2, isMine: true, kind: "text" },
     ]);
     render(<ChatShell session={session} onSignedOut={vi.fn()} />);
     await waitFor(() => screen.getByText("Jdoe"));
@@ -141,8 +144,8 @@ describe("ChatShell: Batch 4 signals", () => {
 
   it("renders the typing line and Seen state in the conversation", async () => {
     vi.mocked(getMessages).mockReturnValue([
-      { eventId: "$1", senderId: "@jdoe:mako", senderName: "jdoe", body: "hey", ts: 1, isMine: false },
-      { eventId: "$2", senderId: session.userId, senderName: "me", body: "hi", ts: 2, isMine: true },
+      { eventId: "$1", senderId: "@jdoe:mako", senderName: "jdoe", body: "hey", ts: 1, isMine: false, kind: "text" },
+      { eventId: "$2", senderId: session.userId, senderName: "me", body: "hi", ts: 2, isMine: true, kind: "text" },
     ]);
     vi.mocked(getRoomReceipts).mockReturnValue([
       { userId: "@jdoe:mako", eventId: "$2", ts: 3 },
@@ -167,3 +170,20 @@ describe("ChatShell: Batch 4 signals", () => {
   });
 });
 
+
+describe("ChatShell: file sharing (Batch 5)", () => {
+  it("attaches a file in the open room through sendFile with progress", async () => {
+    vi.mocked(getMessages).mockReturnValue([]);
+    render(<ChatShell session={session} onSignedOut={vi.fn()} />);
+    await waitFor(() => screen.getByText("Jdoe"));
+    fireEvent.click(screen.getByText("Jdoe"));
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(["hello"], "notes.txt", { type: "text/plain" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() =>
+      expect(sendFile).toHaveBeenCalledWith("!r1", file, expect.any(Function)),
+    );
+  });
+})

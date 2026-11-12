@@ -28,6 +28,12 @@ import {
   type User,
 } from "matrix-js-sdk";
 
+// NOTE: the SDK's RoomMessageEventContent is not root-exported, and its
+// sendMessage has overloads that make `Parameters<>` extraction fragile.
+// Our content literal matches the Matrix spec exactly (msgtype/body/url/
+// info), and the unit tests pin that shape — so we satisfy the parameter
+// with a single deliberate cast at the call site below.
+
 export interface MakoSession {
   /** Server address, normalized (http://…, no trailing slash). */
   baseUrl: string;
@@ -215,7 +221,11 @@ export interface MakoReceipt {
   ts: number;
 }
 
-/** One chat message, as the UI sees it. */
+/**
+ * One chat message, as the UI sees it. `kind` tells the renderer which
+ * shape to draw: plain text, an inline image, or a downloadable file.
+ * For image/file messages, `body` is the FILE NAME.
+ */
 export interface MakoMessage {
   eventId: string;
   senderId: string;
@@ -223,6 +233,12 @@ export interface MakoMessage {
   body: string;
   ts: number;
   isMine: boolean;
+  kind: "text" | "image" | "file";
+  /** mxc:// URL — present for image/file messages. */
+  mxcUrl?: string;
+  mimetype?: string;
+  /** File size in bytes, when the server told us. */
+  size?: number;
 }
 
 /** Everything the UI wants to know about while syncing. */
@@ -441,9 +457,19 @@ function timelineMessages(room: Room): MakoMessage[] {
   const out: MakoMessage[] = [];
   for (const ev of room.getLiveTimeline().getEvents()) {
     if (ev.getType() !== "m.room.message") continue; // skip joins, redactions…
-    const content = ev.getContent() as { msgtype?: string; body?: string };
+    const content = ev.getContent() as {
+      msgtype?: string;
+      body?: string;
+      url?: string;
+      info?: { mimetype?: string; size?: number };
+    };
     if (!content.body) continue;
     const senderId = ev.getSender() ?? "";
+    // A message with an mxc:// URL carries media. Images render inline;
+    // everything else renders as a downloadable card.
+    const hasMedia = typeof content.url === "string" && content.url.startsWith("mxc://");
+    const kind: MakoMessage["kind"] =
+      hasMedia && content.msgtype === "m.image" ? "image" : hasMedia ? "file" : "text";
     out.push({
       eventId: ev.getId() ?? `${ev.localTimestamp}`,
       senderId,
@@ -451,6 +477,10 @@ function timelineMessages(room: Room): MakoMessage[] {
       body: content.body,
       ts: ev.localTimestamp,
       isMine: senderId === session?.userId,
+      kind,
+      mxcUrl: hasMedia ? content.url : undefined,
+      mimetype: content.info?.mimetype,
+      size: content.info?.size,
     });
   }
   return out;
@@ -549,4 +579,58 @@ export function getRoomReceipts(roomId: string): MakoReceipt[] {
     if (receipt) out.push({ userId: member.userId, eventId: receipt.eventId, ts: receipt.data.ts });
   }
   return out;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FILE SHARING (Batch 5): upload → send → render → download.
+// Two-step model, same as every Matrix client:
+//   1. the BYTES go to the server's media repository (returns mxc://…)
+//   2. the room receives a small message pointing at those bytes
+// ═════════════════════════════════════════════════════════════════════════
+
+/**
+ * Share a file with a room. Images (image/*) are sent as m.image so they
+ * render inline; everything else becomes a downloadable m.file card.
+ * `onProgress` receives 0–100 as the upload streams.
+ */
+export async function sendFile(
+  roomId: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
+  if (!client) throw new Error("Not signed in.");
+  // Step 1: park the bytes in the media repository.
+  const { content_uri } = await client.uploadContent(file, {
+    name: file.name,
+    type: file.type,
+    progressHandler: onProgress
+      ? (p) => onProgress(p.total > 0 ? Math.round((p.loaded / p.total) * 100) : 0)
+      : undefined,
+  });
+  // Step 2: tell the room where the bytes live.
+  const isImage = file.type.startsWith("image/");
+  const content = {
+    msgtype: isImage ? "m.image" : "m.file",
+    body: file.name,
+    url: content_uri,
+    info: { mimetype: file.type, size: file.size },
+  };
+  await client.sendMessage(roomId, content as never);
+}
+
+/**
+ * Turn an mxc:// media URL into the http URL the UI can load.
+ * Width/height (for image thumbnails) ask the server to SCALE a copy —
+ * omitting them returns the full-size original (used for downloads).
+ * NOTE: null when not signed in or the URL is malformed.
+ */
+export function mxcToHttp(mxcUrl: string, width?: number, height?: number): string | null {
+  if (!client) return null;
+  const url = client.mxcUrlToHttp(
+    mxcUrl,
+    width,
+    height,
+    width !== undefined ? "scale" : undefined,
+  );
+  return url ?? null;
 }

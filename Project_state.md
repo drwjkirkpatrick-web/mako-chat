@@ -1,7 +1,7 @@
 # Project State: MAKO CHAT
 
 > **Last updated:** 2026-11-12
-> **Current phase:** build (Batch 4 complete)
+> **Current phase:** build (Batch 5 complete)
 > **Overall health:** green
 
 ---
@@ -21,9 +21,10 @@ files, and connect over LAN or Tailscale.
 - [x] Batch 2 — client foundation: Electron/React scaffold, branded login, matrix-js-sdk 45 wrapper; 16 tests green, production build verified
 - [x] Batch 3 — messaging core: sync loop, room list, conversations, DM creation; 40 tests green, offline shell browser-verified
 - [x] Batch 4 — presence, typing indicators, read receipts/Seen: presence dots on DMs, typing line + preview, throttled typing-out, auto-read; 61 tests green
+- [x] Batch 5 — file sharing: attach with upload progress, inline images (thumb→full), file cards, per-room files drawer, download links; 73 tests green
 
 ### In Progress
-- [ ] Batch 5 — file sharing: upload/download/room files
+- [ ] Batch 6 — profiles, avatars, desktop notifications
 
 ### Not Started
 - [ ] Batches 2–9 (client, messaging, files, admin mode, packaging, docs)
@@ -48,8 +49,8 @@ files, and connect over LAN or Tailscale.
   all SDK calls in one client-side data module (D9).
 
 ## 5. Next Step (only ONE)
-> **Next:** Batch 5 — file sharing: send files in a room, download them,
-> per-room files view. Wrapper: m.file.message handling + media download.
+> **Next:** Batch 6 — profiles and avatars (display name + picture set in
+> app), desktop notifications on new messages (Electron Notification).
 
 ## 6. Environment & Tooling Notes
 - Dev host: Jetson (Linux ARM64, Docker daemon broken — no-root environment)
@@ -64,6 +65,7 @@ files, and connect over LAN or Tailscale.
 - 2026-11-12: Batch 2 — client foundation built + verified (SDK-45 signatures checked against installed types; 16 tests; production build; login + error paths browser-checked); committed.
 - 2026-11-12: Batch 3 — messaging core built + verified (sync loop/rooms/DMs against verified SDK-45 surface; 40 tests; offline chat shell + validation browser-checked; polish backlog noted in PLAN).
 - 2026-11-12: Batch 4 — presence/typing/receipts built + verified (verified v45 API incl. sendTyping, getReadReceiptForUserId, IPresenceOpts; 61 tests; browser regression check clean).
+- 2026-11-12: Batch 5 — file sharing built + verified (uploadContent/UploadOpts/mxcUrlToHttp verified; Parameters<> overload trap documented; 73 tests; browser regression clean).
 
 ## 8. References
 - Spec: `docs/SPEC.md`

@@ -10,7 +10,7 @@ server keeps every message and file.
 
 ## Status
 
-- **Phase:** Batch 4 of 9 done — presence dots, typing indicators, read receipts/"Seen" (61 tests). File sharing next; not yet usable against a live server.
+- **Phase:** Batch 5 of 9 done — file sharing: attach/upload with progress, inline images, file cards, files drawer, downloads (73 tests). Profiles/notifications next; not yet usable against a live server.
 - This repository is the single source of truth:
   - `docs/SPEC.md` — the full product specification (what we are building and why)
   - `docs/PLAN.md` — architecture, design decisions, and the batch-by-batch build plan

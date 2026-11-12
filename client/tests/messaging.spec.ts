@@ -45,6 +45,16 @@ function makeFakeClient(): MatrixClient {
     getRooms: vi.fn(() => [] as Room[]),
     getRoom: vi.fn(() => null),
     sendTextMessage: vi.fn().mockResolvedValue({}),
+    sendMessage: vi.fn().mockResolvedValue({}),
+    uploadContent: vi.fn(async (_file: File, opts?: {
+      progressHandler?: (p: { loaded: number; total: number }) => void;
+    }) => {
+      opts?.progressHandler?.({ loaded: 500, total: 1000 });
+      return { content_uri: "mxc://mako/abc" };
+    }),
+    mxcUrlToHttp: vi.fn(
+      (url: string, w?: number) => `http://s/media/${w ? "thumb" : "full"}/${url}`,
+    ),
     createRoom: vi.fn().mockResolvedValue({ room_id: "!new" }),
     getAccountDataFromServer: vi.fn().mockResolvedValue(null),
     setAccountData: vi.fn().mockResolvedValue({}),
@@ -60,7 +70,14 @@ function makeFakeClient(): MatrixClient {
 function makeFakeRoom(roomId: string, opts: {
   name?: string;
   joined?: string[];
-  messages?: Array<{ sender: string; body: string; ts: number }>;
+  messages?: Array<{
+    sender: string;
+    body: string;
+    ts: number;
+    msgtype?: string;
+    url?: string;
+    info?: { mimetype?: string; size?: number };
+  }>;
   membership?: string;
   typing?: string[];
   receipts?: Record<string, { eventId: string; data: { ts: number } }>;
@@ -69,7 +86,12 @@ function makeFakeRoom(roomId: string, opts: {
   const events = (opts.messages ?? []).map((m, i) => ({
     getType: () => "m.room.message",
     getSender: () => m.sender,
-    getContent: () => ({ msgtype: "m.text", body: m.body }),
+    getContent: () => ({
+      msgtype: m.msgtype ?? "m.text",
+      body: m.body,
+      url: m.url,
+      info: m.info,
+    }),
     getId: () => "$ev" + i,
     localTimestamp: m.ts,
   }));
@@ -379,5 +401,82 @@ describe("read receipts (Batch 4)", () => {
 
     fire(fake, "Room.receipt", { getType: () => "m.receipt" }, room);
     expect(cb.onRoomUpdated).toHaveBeenCalledWith("!dm");
+  });
+});
+
+describe("file sharing (Batch 5)", () => {
+  it("uploads, reports progress, and sends an image message", async () => {
+    const fake = makeFakeClient();
+    await loginWithFake(fake);
+    const progress = vi.fn();
+    const file = new File(["x"], "photo.png", { type: "image/png" });
+
+    await matrix.sendFile("!r1", file, progress);
+
+    expect(fake["uploadContent"]).toHaveBeenCalled();
+    expect(progress).toHaveBeenCalledWith(50); // 500 of 1000 bytes
+    expect(fake["sendMessage"]).toHaveBeenCalledWith("!r1", {
+      msgtype: "m.image",
+      body: "photo.png",
+      url: "mxc://mako/abc",
+      info: { mimetype: "image/png", size: file.size },
+    });
+  });
+
+  it("sends non-images as downloadable m.file messages", async () => {
+    const fake = makeFakeClient();
+    await loginWithFake(fake);
+    const file = new File(["%PDF"], "doc.pdf", { type: "application/pdf" });
+
+    await matrix.sendFile("!r1", file);
+
+    expect(fake["sendMessage"]).toHaveBeenCalledWith("!r1", {
+      msgtype: "m.file",
+      body: "doc.pdf",
+      url: "mxc://mako/abc",
+      info: { mimetype: "application/pdf", size: file.size },
+    });
+  });
+
+  it("maps image/file timeline events into kinds with media metadata", async () => {
+    const fake = makeFakeClient();
+    const room = makeFakeRoom("!r1", {
+      joined: [ME, "@jdoe:mako"],
+      messages: [
+        {
+          sender: "@jdoe:mako", body: "look.png", ts: 1, msgtype: "m.image",
+          url: "mxc://mako/i1", info: { mimetype: "image/png", size: 100 },
+        },
+        {
+          sender: "@jdoe:mako", body: "doc.pdf", ts: 2, msgtype: "m.file",
+          url: "mxc://mako/f1", info: { mimetype: "application/pdf", size: 2048 },
+        },
+        { sender: "@jdoe:mako", body: "plain", ts: 3 },
+      ],
+    });
+    (fake.getRoom as ReturnType<typeof vi.fn>).mockReturnValue(room);
+    await loginWithFake(fake);
+
+    const msgs = matrix.getMessages("!r1");
+    expect(msgs[0].kind).toBe("image");
+    expect(msgs[0].mxcUrl).toBe("mxc://mako/i1");
+    expect(msgs[0].mimetype).toBe("image/png");
+    expect(msgs[1].kind).toBe("file");
+    expect(msgs[1].size).toBe(2048);
+    expect(msgs[2].kind).toBe("text");
+  });
+
+  it("resolves mxc URLs to http (thumbnails and full size)", async () => {
+    const fake = makeFakeClient();
+    await loginWithFake(fake);
+    expect(matrix.mxcToHttp("mxc://mako/abc")).toBe("http://s/media/full/mxc://mako/abc");
+    expect(matrix.mxcToHttp("mxc://mako/abc", 480, 480)).toBe(
+      "http://s/media/thumb/mxc://mako/abc",
+    );
+  });
+
+  it("returns null for mxc URLs when not signed in", async () => {
+    await matrix.logout();
+    expect(matrix.mxcToHttp("mxc://mako/abc")).toBeNull();
   });
 });

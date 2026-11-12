@@ -6,6 +6,7 @@ import {
   listRooms,
   logout,
   markRoomRead,
+  sendFile,
   sendText,
   sendTyping,
   startDirectMessage,
@@ -45,6 +46,8 @@ export function ChatShell({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MakoMessage[]>([]);
   const [receipts, setReceipts] = useState<MakoReceipt[]>([]);
+  const [uploading, setUploading] = useState<{ name: string; pct: number } | null>(null);
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [status, setStatus] = useState<MakoSyncState>("connecting");
   const [newChatError, setNewChatError] = useState<string | null>(null);
 
@@ -85,6 +88,7 @@ export function ChatShell({
     setSelectedId(roomId);
     setMessages(getMessages(roomId));
     setReceipts(getRoomReceipts(roomId));
+    setUploadNotice(null);
   }
 
   async function handleSend(body: string) {
@@ -103,6 +107,23 @@ export function ChatShell({
   // is what makes "Seen" appear for the people we're chatting with.
   function handleRead() {
     if (selectedIdRef.current) void markRoomRead(selectedIdRef.current);
+  }
+
+  // Batch 5: the attach button hands us a File; the wrapper uploads it to
+  // the media repository, then sends the pointing message into the room.
+  async function handleAttach(file: File) {
+    const roomId = selectedIdRef.current;
+    if (!roomId) return;
+    setUploadNotice(null);
+    setUploading({ name: file.name, pct: 0 });
+    try {
+      await sendFile(roomId, file, (pct) => setUploading({ name: file.name, pct }));
+    } catch (err) {
+      const e = err as { message?: string };
+      setUploadNotice(e.message ? String(e.message) : "Upload failed. Please try again.");
+    } finally {
+      setUploading(null);
+    }
   }
 
   async function handleNewChat(raw: string) {
@@ -160,9 +181,12 @@ export function ChatShell({
             messages={messages}
             receipts={receipts}
             myUserId={session.userId}
+            uploading={uploading}
+            notice={uploadNotice}
             onSend={handleSend}
             onTyping={handleTyping}
             onRead={handleRead}
+            onAttach={handleAttach}
           />
         ) : (
           <div className="empty-state">

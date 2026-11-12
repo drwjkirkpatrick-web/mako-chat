@@ -64,7 +64,7 @@
 | 2 | Client foundation: Electron+React+Vite scaffold, branding, login, session | done (16 tests; login + error paths verified in browser) |
 | 3 | Messaging core: sync loop, room list, DMs, timeline, send/receive | done (40 tests; offline shell + validation browser-verified) |
 | 4 | Presence, typing, read receipts | done (61 tests; offline shell regression-checked in browser) |
-| 5 | File sharing: upload/download/room files | — |
+| 5 | File sharing: upload/download/room files | done (73 tests; upload+progress, image/file rendering, files drawer, download links) |
 | 6 | Profiles, avatars, desktop notifications | — |
 | 7 | Admin mode: users, groups, announcements, storage stats | — |
 | 8 | Packaging: electron-builder NSIS + dmg, GitHub Actions release | — |
