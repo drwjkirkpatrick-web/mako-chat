@@ -1,0 +1,45 @@
+# MAKO CHAT — server stack (Synapse + PostgreSQL)
+#
+# NOTE: run `bash first-run.sh` ONCE before the first `docker compose up -d`.
+#       It generates the server's signing keys and renders homeserver.yaml
+#       from homeserver.template.yaml using the values in .env.
+# NOTE: the Synapse image is PINNED (docs/PLAN.md — schema drift risk).
+#       Upgrading = edit the tag here AND in first-run.sh, then:
+#       docker compose pull && docker compose up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # NOTE: UTF8 + C locale is the combination Synapse requires.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    # NOTE: deliberately NOT published to the host — only Synapse talks to it.
+
+  synapse:
+    image: matrixdotorg/synapse:v1.164.2
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8008:8008"   # the client API — the ONLY door this server opens.
+                       # LAN clients use the machine IP; Tailscale clients use
+                       # the MagicDNS name. No federation port (PLAN D5).
+    environment:
+      SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
+    volumes:
+      - ./data/synapse:/data   # config, signing keys, media store, uploads
+
+volumes:
+  postgres_data:

@@ -1,0 +1,88 @@
+# MAKO CHAT — Synapse homeserver configuration (TEMPLATE).
+#
+# Do not edit the rendered copy on the server by hand — change this template
+# or .env, then re-run first-run.sh.
+#
+# WHY a template: the rendered file (data/synapse/homeserver.yaml) contains
+# secrets (database password, registration secret) and must never be in git.
+# All __-delimited placeholder tokens below are substituted by first-run.sh.
+#
+# NOTE: keys here are deliberately MINIMAL — Synapse defaults are sane and
+# already ON for presence, typing indicators, and read receipts (which the
+# spec requires). Fewer keys = less drift across Synapse versions.
+
+# --- Identity ---------------------------------------------------------------
+# server_name is baked into every user ID (@user:mako) and room address
+# (#room:mako). Choose once; changing it means a brand-new server identity.
+server_name: "__SERVER_NAME__"
+
+# The address clients use to reach this server. Must work identically on the
+# LAN and over Tailscale — hence the Tailscale MagicDNS name.
+public_baseurl: "__PUBLIC_BASEURL__"
+
+pid_file: /data/homeserver.pid
+signing_key_path: "/data/__SIGNING_KEY__"
+
+# --- Network: clients only, no federation (PLAN decision D5) -----------------
+# A private institutional island: no server-to-server Matrix traffic, no
+# connection to the public Matrix network, and nothing reachable from the
+# open internet except through Tailscale or the institution LAN.
+listeners:
+  - port: 8008
+    tls: false              # transport security comes from Tailscale's tunnel
+    type: http
+    bind_addresses: ["0.0.0.0"]
+    resources:
+      - names: [client]     # client API only — the federation resource is absent
+
+# Do not fetch verification keys from the public Matrix network.
+trusted_key_servers: []
+suppress_key_server_warning: true
+
+# --- Database (the postgres service in docker-compose.yml) -------------------
+database:
+  name: psycopg2
+  args:
+    user: "__POSTGRES_USER__"
+    password: "__POSTGRES_PASSWORD__"
+    database: "__POSTGRES_DB__"
+    host: postgres          # docker-compose service name
+    port: 5432
+    cp_min: 5
+    cp_max: 10
+
+# --- Files & media -----------------------------------------------------------
+media_store_path: /data/media_store
+max_upload_size: 100M       # generous for documents, PDFs and photos
+
+# --- Accounts: administrator-controlled only (spec: User Management) --------
+# Self-registration is OFF (PLAN D2). Accounts are created by an admin:
+#   - on the server:  docker compose exec -it synapse \
+#       register_new_matrix_user http://localhost:8008
+#   - from the app:   MAKO CHAT admin dashboard (Synapse Admin API) — Batch 7
+enable_registration: false
+enable_registration_without_verification: false
+# Used ONLY by the admin CLI on this machine. Keep it on the server.
+registration_shared_secret: "__REGISTRATION_SECRET__"
+
+password_config:
+  minimum_length: 8
+
+# --- Encryption: v1 = transport-secured, NOT end-to-end (PLAN D6) -----------
+# Rooms stay inside this server; Tailscale encrypts traffic in transit; the
+# institution (which runs the server and creates the accounts) is the trusted
+# party. End-to-end encryption is a roadmap item, stated in the README.
+encryption_enabled_by_default_for_room_type: "off"
+
+# --- Announcements (spec: institutional broadcasts — PLAN D4) ---------------
+# Every new account auto-joins this room. The room must exist first —
+# deploy.md step 7 creates it with the first admin account.
+auto_join_rooms:
+  - "#announcements:__SERVER_NAME__"
+auto_join_rooms_for_guests: false
+
+# --- Behaviour / logging -----------------------------------------------------
+# report_stats: no analytics leave the building.
+report_stats: false
+# The log config file is written by the official `generate` step (first-run.sh).
+log_config: "/data/__SERVER_NAME__.log.config"

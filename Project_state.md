@@ -1,7 +1,7 @@
 # Project State: MAKO CHAT
 
 > **Last updated:** 2026-11-12
-> **Current phase:** build (Batch 0 complete)
+> **Current phase:** build (Batch 1 complete)
 > **Overall health:** green
 
 ---
@@ -17,9 +17,10 @@ files, and connect over LAN or Tailscale.
 - [x] Repository scaffolded (`~/projects/mako-chat/`, branch `main`)
 - [x] Product spec captured verbatim in `docs/SPEC.md`
 - [x] Architecture + 9-batch build plan in `docs/PLAN.md`
+- [x] Batch 1 — server deployment stack authored + statically validated
 
 ### In Progress
-- [ ] Batch 1 — server deployment stack (docker-compose, synapse config)
+- [ ] Batch 2 — client foundation (Electron + React scaffold, login)
 
 ### Not Started
 - [ ] Batches 2–9 (client, messaging, files, admin mode, packaging, docs)
@@ -44,9 +45,8 @@ files, and connect over LAN or Tailscale.
   all SDK calls in one client-side data module (D9).
 
 ## 5. Next Step (only ONE)
-> **Next:** Batch 1 — write the server deployment stack (`docker-compose.yml`,
-> `homeserver.template.yaml`, `first-run.sh`, `backup.sh`, `.env.example`,
-> `server/deploy.md`).
+> **Next:** Batch 2 — client foundation: Electron + React + Vite scaffold in
+> `client/`, MAKO branding, login screen, matrix-js-sdk session wrapper.
 
 ## 6. Environment & Tooling Notes
 - Dev host: Jetson (Linux ARM64, Docker daemon broken — no-root environment)
@@ -56,6 +56,7 @@ files, and connect over LAN or Tailscale.
 
 ## 7. Recent Session Log
 - 2026-11-12: Repo scaffolded; SPEC/PLAN/Project_state written; Batch 1 queued.
+- 2026-11-12: Batch 1 — server stack (compose, synapse template, first-run, backup, deploy runbook) authored + static-validated; committed.
 
 ## 8. References
 - Spec: `docs/SPEC.md`
