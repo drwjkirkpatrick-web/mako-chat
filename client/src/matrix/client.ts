@@ -207,8 +207,16 @@ export interface MakoRoom {
   preview: string;
   /** The OTHER member's presence — DMs only; "unknown" for groups. */
   otherPresence: MakoPresence;
+  /** The OTHER member's avatar (mxc) when we have one — DMs only. */
+  otherAvatarMxc?: string;
   /** Display names of members typing right now (never includes me). */
   typingNames: string[];
+}
+
+/** My own profile: the name and picture other members see. */
+export interface MakoProfile {
+  displayName: string;
+  avatarMxc?: string;
 }
 
 /** A member's presence, simplified. "unknown" = we have no data yet. */
@@ -246,6 +254,12 @@ export interface MakoSyncCallbacks {
   onStateChange(state: MakoSyncState): void;
   onRoomsChanged(): void;
   onRoomUpdated(roomId: string): void;
+  /**
+   * A message arrived from SOMEONE ELSE (Batch 6). The app decides what to
+   * do with it — MAKO shows a desktop notification for rooms the user is
+   * not currently looking at.
+   */
+  onIncomingMessage?(roomId: string, roomName: string, senderName: string, body: string): void;
 }
 
 // Module state for the sync section (private, like `client` above).
@@ -330,6 +344,20 @@ function onTimelineEvent(event: MatrixEvent, room: Room | undefined): void {
   if (!room) return;
   if (event.getType() === "m.room.message") {
     syncCallbacks?.onRoomUpdated(room.roomId);
+    // Batch 6: hand incoming messages from OTHERS to the app (for desktop
+    // notifications). Our own messages never notify.
+    const senderId = event.getSender();
+    const content = event.getContent() as { body?: string };
+    if (senderId && senderId !== session?.userId && content.body) {
+      const senderName = room.getMember(senderId)?.name ?? senderId;
+      const isDirect = dmRoomIds.has(room.roomId) || room.getJoinedMembers().length === 2;
+      syncCallbacks?.onIncomingMessage?.(
+        room.roomId,
+        displayNameFor(room, isDirect),
+        senderName,
+        content.body,
+      );
+    }
   }
   syncCallbacks?.onRoomsChanged(); // preview + ordering may have moved
 }
@@ -425,6 +453,7 @@ function toMakoRoom(room: Room): MakoRoom {
     // DMs show the OTHER person's presence dot; groups have no single dot.
     otherPresence:
       isDirect && others.length > 0 ? getPresenceOf(others[0].userId) : "unknown",
+    otherAvatarMxc: isDirect ? (others[0]?.getMxcAvatarUrl() ?? undefined) : undefined,
     typingNames,
     lastActivityTs: last ? last.ts : 0,
     preview: typingNames.length > 0
@@ -633,4 +662,43 @@ export function mxcToHttp(mxcUrl: string, width?: number, height?: number): stri
     width !== undefined ? "scale" : undefined,
   );
   return url ?? null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MY PROFILE (Batch 6): the name and picture other members see.
+// The server is the source of truth; the local cache can lag after edits.
+// ═════════════════════════════════════════════════════════════════════════
+
+/** Fetch my profile fresh from the server. */
+export async function getMyProfile(): Promise<MakoProfile> {
+  if (!client || !session) throw new Error("Not signed in.");
+  const info = await client.getProfileInfo(session.userId);
+  return { displayName: info.displayname ?? "", avatarMxc: info.avatar_url };
+}
+
+/** Change the display name other members see. */
+export async function setMyDisplayName(name: string): Promise<void> {
+  if (!client) throw new Error("Not signed in.");
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Display name cannot be empty.");
+  await client.setDisplayName(trimmed);
+}
+
+/**
+ * Replace my profile picture: upload the image bytes to the media
+ * repository, then point my profile at the new mxc:// URL.
+ */
+export async function setMyAvatar(file: File, onProgress?: (pct: number) => void): Promise<void> {
+  if (!client) throw new Error("Not signed in.");
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Profile pictures must be images.");
+  }
+  const { content_uri } = await client.uploadContent(file, {
+    name: file.name,
+    type: file.type,
+    progressHandler: onProgress
+      ? (p) => onProgress(p.total > 0 ? Math.round((p.loaded / p.total) * 100) : 0)
+      : undefined,
+  });
+  await client.setAvatarUrl(content_uri);
 }

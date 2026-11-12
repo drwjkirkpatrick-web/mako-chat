@@ -59,6 +59,12 @@ function makeFakeClient(): MatrixClient {
     getAccountDataFromServer: vi.fn().mockResolvedValue(null),
     setAccountData: vi.fn().mockResolvedValue({}),
     setPresence: vi.fn().mockResolvedValue(undefined),
+    getProfileInfo: vi.fn().mockResolvedValue({
+      displayname: "Walker",
+      avatar_url: "mxc://mako/av1",
+    }),
+    setDisplayName: vi.fn().mockResolvedValue({}),
+    setAvatarUrl: vi.fn().mockResolvedValue({}),
     sendTyping: vi.fn().mockResolvedValue({}),
     sendReadReceipt: vi.fn().mockResolvedValue({}),
     getUser: vi.fn(() => null),
@@ -80,6 +86,7 @@ function makeFakeRoom(roomId: string, opts: {
   }>;
   membership?: string;
   typing?: string[];
+  avatars?: Record<string, string>;
   receipts?: Record<string, { eventId: string; data: { ts: number } }>;
 } = {}): Room {
   const joined = opts.joined ?? [ME];
@@ -104,6 +111,7 @@ function makeFakeRoom(roomId: string, opts: {
         userId: id,
         name: id.replace(/^@/, "").split(":")[0],
         typing: (opts.typing ?? []).includes(id),
+        getMxcAvatarUrl: () => (opts.avatars ?? {})[id] ?? null,
       })),
     getMember: (id: string) => ({ userId: id, name: id.replace(/^@/, "").split(":")[0] }),
     getLiveTimeline: () => ({ getEvents: () => events }),
@@ -478,5 +486,107 @@ describe("file sharing (Batch 5)", () => {
   it("returns null for mxc URLs when not signed in", async () => {
     await matrix.logout();
     expect(matrix.mxcToHttp("mxc://mako/abc")).toBeNull();
+  });
+});
+
+describe("my profile (Batch 6)", () => {
+  it("loads the profile fresh from the server", async () => {
+    const fake = makeFakeClient();
+    await loginWithFake(fake);
+    expect(await matrix.getMyProfile()).toEqual({
+      displayName: "Walker",
+      avatarMxc: "mxc://mako/av1",
+    });
+  });
+
+  it("sets a display name (trimmed; rejects empty)", async () => {
+    const fake = makeFakeClient();
+    await loginWithFake(fake);
+    await matrix.setMyDisplayName("  Walker K.  ");
+    expect(fake["setDisplayName"]).toHaveBeenCalledWith("Walker K.");
+    await expect(matrix.setMyDisplayName("   ")).rejects.toBeTruthy();
+  });
+
+  it("uploads an avatar, then points the profile at it (images only)", async () => {
+    const fake = makeFakeClient();
+    await loginWithFake(fake);
+    const file = new File(["x"], "me.png", { type: "image/png" });
+    await matrix.setMyAvatar(file);
+    expect(fake["uploadContent"]).toHaveBeenCalled();
+    expect(fake["setAvatarUrl"]).toHaveBeenCalledWith("mxc://mako/abc");
+
+    const pdf = new File(["x"], "me.pdf", { type: "application/pdf" });
+    await expect(matrix.setMyAvatar(pdf)).rejects.toBeTruthy();
+  });
+});
+
+describe("incoming messages (Batch 6)", () => {
+  it("hands other people's messages to the app for notifications", async () => {
+    const fake = makeFakeClient();
+    const room = makeFakeRoom("!dm", { joined: [ME, "@jdoe:mako"] });
+    (fake.getRooms as ReturnType<typeof vi.fn>).mockReturnValue([room]);
+    await loginWithFake(fake);
+    const cb = {
+      onStateChange: vi.fn(),
+      onRoomsChanged: vi.fn(),
+      onRoomUpdated: vi.fn(),
+      onIncomingMessage: vi.fn(),
+    };
+    await matrix.startSync(cb);
+
+    fire(fake, "Room.timeline", {
+      getType: () => "m.room.message",
+      getSender: () => "@jdoe:mako",
+      getContent: () => ({ msgtype: "m.text", body: "hi there" }),
+      getId: () => "$n1",
+      localTimestamp: 99,
+    }, room);
+
+    expect(cb.onIncomingMessage).toHaveBeenCalledWith("!dm", "jdoe", "jdoe", "hi there");
+  });
+
+  it("never notifies about my own messages", async () => {
+    const fake = makeFakeClient();
+    const room = makeFakeRoom("!dm", { joined: [ME, "@jdoe:mako"] });
+    (fake.getRooms as ReturnType<typeof vi.fn>).mockReturnValue([room]);
+    await loginWithFake(fake);
+    const cb = {
+      onStateChange: vi.fn(),
+      onRoomsChanged: vi.fn(),
+      onRoomUpdated: vi.fn(),
+      onIncomingMessage: vi.fn(),
+    };
+    await matrix.startSync(cb);
+
+    fire(fake, "Room.timeline", {
+      getType: () => "m.room.message",
+      getSender: () => ME,
+      getContent: () => ({ msgtype: "m.text", body: "my own echo" }),
+      getId: () => "$n2",
+      localTimestamp: 100,
+    }, room);
+
+    expect(cb.onIncomingMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe("DM avatars (Batch 6)", () => {
+  it("exposes the other member's avatar on DM rooms", async () => {
+    const fake = makeFakeClient();
+    const room = makeFakeRoom("!dm", {
+      joined: [ME, "@jdoe:mako"],
+      avatars: { "@jdoe:mako": "mxc://mako/jd" },
+    });
+    (fake.getRooms as ReturnType<typeof vi.fn>).mockReturnValue([room]);
+    await loginWithFake(fake);
+    expect(matrix.listRooms()[0].otherAvatarMxc).toBe("mxc://mako/jd");
+  });
+
+  it("stays undefined when the other member has no picture", async () => {
+    const fake = makeFakeClient();
+    const room = makeFakeRoom("!dm", { joined: [ME, "@jdoe:mako"] });
+    (fake.getRooms as ReturnType<typeof vi.fn>).mockReturnValue([room]);
+    await loginWithFake(fake);
+    expect(matrix.listRooms()[0].otherAvatarMxc).toBeUndefined();
   });
 });

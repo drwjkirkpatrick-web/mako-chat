@@ -1,18 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { BRAND } from "../brand";
+import { ensureNotificationPermission, showNotification } from "../notify";
+import { ProfilePanel, type ProfileUpdates } from "./ProfilePanel";
 import {
   getMessages,
+  getMyProfile,
   getRoomReceipts,
   listRooms,
+  mxcToHttp,
   logout,
   markRoomRead,
   sendFile,
+  setMyAvatar,
+  setMyDisplayName,
   sendText,
   sendTyping,
   startDirectMessage,
   startSync,
   stopSync,
   type MakoMessage,
+  type MakoProfile,
   type MakoReceipt,
   type MakoRoom,
   type MakoSession,
@@ -50,12 +57,23 @@ export function ChatShell({
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [status, setStatus] = useState<MakoSyncState>("connecting");
   const [newChatError, setNewChatError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<MakoProfile | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // WHY a ref NEXT TO the state: the sync callbacks are registered once
   // (empty dependency array below), so anything they read later must come
   // from a ref — a state value captured there would be a stale snapshot
   // from mount time. selectedId state still drives the render.
   const selectedIdRef = useRef<string | null>(null);
+
+  // Batch 6: my profile (chip name/picture) + notification permission.
+  // Both fire-and-forget: neither may block the app from starting.
+  useEffect(() => {
+    void getMyProfile().then(setProfile).catch(() => {});
+    void ensureNotificationPermission();
+  }, []);
 
   useEffect(() => {
     startSync({
@@ -72,6 +90,13 @@ export function ChatShell({
           setReceipts(getRoomReceipts(roomId));
         }
       },
+      // Batch 6: a message arrived in a room — if the user is not looking
+      // at it, pop a desktop notification.
+      onIncomingMessage: (roomId, roomName, senderName, body) => {
+        if (roomId !== selectedIdRef.current) {
+          showNotification(`${BRAND.name} — ${roomName}`, `${senderName}: ${body}`);
+        }
+      },
     }).catch(() => onSignedOut("Could not start syncing. Please sign in again."));
 
     // Cleanup runs on unmount (sign-out): the wrapper detaches everything.
@@ -82,6 +107,8 @@ export function ChatShell({
   }, []);
 
   const selectedRoom = rooms.find((r) => r.roomId === selectedId);
+  const localpart = session.userId.split(":")[0].slice(1) || "?";
+  const profileAvatar = profile?.avatarMxc ? mxcToHttp(profile.avatarMxc, 64, 64) : null;
 
   function selectRoom(roomId: string) {
     selectedIdRef.current = roomId;
@@ -143,6 +170,28 @@ export function ChatShell({
     }
   }
 
+  // Batch 6: save profile edits, then re-read the profile from the server
+  // so the chip and panel show the truth.
+  async function handleProfileSave(updates: ProfileUpdates) {
+    setProfileBusy(true);
+    setProfileError(null);
+    try {
+      if (updates.displayName && updates.displayName !== profile?.displayName) {
+        await setMyDisplayName(updates.displayName);
+      }
+      if (updates.avatarFile) {
+        await setMyAvatar(updates.avatarFile);
+      }
+      setProfile(await getMyProfile());
+      setShowProfile(false);
+    } catch (err) {
+      const e = err as { message?: string };
+      setProfileError(e.message ? String(e.message) : "Could not save. Please try again.");
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
   async function handleSignOut() {
     await logout(); // stops the sync loop and ends the server session
     onSignedOut();
@@ -159,6 +208,22 @@ export function ChatShell({
             Sign out
           </button>
         </header>
+
+        <button
+          className="user-chip"
+          type="button"
+          title="My profile"
+          onClick={() => setShowProfile((v) => !v)}
+        >
+          <span className="user-avatar" aria-hidden="true">
+            {profileAvatar ? (
+              <img src={profileAvatar} alt="" />
+            ) : (
+              (profile?.displayName || localpart)[0]?.toUpperCase() ?? "🦈"
+            )}
+          </span>
+          <span className="user-name">{profile?.displayName || localpart}</span>
+        </button>
 
         <div className={"status status-" + status}>
           <span className="status-dot" aria-hidden="true" />
@@ -197,6 +262,17 @@ export function ChatShell({
           </div>
         )}
       </main>
+
+      {showProfile && profile && (
+        <ProfilePanel
+          profile={profile}
+          myUserId={session.userId}
+          busy={profileBusy}
+          error={profileError}
+          onSave={handleProfileSave}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
     </div>
   );
 }

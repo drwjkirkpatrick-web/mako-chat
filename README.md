@@ -10,7 +10,7 @@ server keeps every message and file.
 
 ## Status
 
-- **Phase:** Batch 5 of 9 done — file sharing: attach/upload with progress, inline images, file cards, files drawer, downloads (73 tests). Profiles/notifications next; not yet usable against a live server.
+- **Phase:** Batch 6 of 9 done — profiles & avatars (chip + profile editor) and desktop notifications for unopened rooms (93 tests). Admin mode next; not yet usable against a live server.
 - This repository is the single source of truth:
   - `docs/SPEC.md` — the full product specification (what we are building and why)
   - `docs/PLAN.md` — architecture, design decisions, and the batch-by-batch build plan

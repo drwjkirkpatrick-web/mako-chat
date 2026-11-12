@@ -17,19 +17,32 @@ vi.mock("../src/matrix/client", () => ({
   markRoomRead: vi.fn(),
   startDirectMessage: vi.fn(),
   logout: vi.fn(),
+  getMyProfile: vi.fn(),
+  setMyDisplayName: vi.fn(),
+  setMyAvatar: vi.fn(),
+  mxcToHttp: vi.fn(),
+}));
+
+// Batch 6: notifications are a module boundary — mock the whole notifier.
+vi.mock("../src/notify", () => ({
+  ensureNotificationPermission: vi.fn().mockResolvedValue(false),
+  showNotification: vi.fn(),
 }));
 
 import {
   getMessages,
+  getMyProfile,
   getRoomReceipts,
   listRooms,
   markRoomRead,
   sendFile,
   sendText,
+  setMyDisplayName,
   startDirectMessage,
   startSync,
   stopSync,
 } from "../src/matrix/client";
+import { showNotification } from "../src/notify";
 
 const session: MakoSession = {
   baseUrl: "http://mako-server:8008",
@@ -60,6 +73,12 @@ function wireSync() {
 }
 
 beforeEach(() => {
+  vi.mocked(showNotification).mockReset();
+  vi.mocked(getMyProfile).mockReset().mockResolvedValue({
+    displayName: "Walker",
+    avatarMxc: undefined,
+  });
+  vi.mocked(setMyDisplayName).mockReset().mockResolvedValue(undefined);
   vi.mocked(stopSync).mockReset();
   vi.mocked(getMessages).mockReset();
   vi.mocked(getRoomReceipts).mockReset().mockReturnValue([]);
@@ -185,5 +204,52 @@ describe("ChatShell: file sharing (Batch 5)", () => {
     await waitFor(() =>
       expect(sendFile).toHaveBeenCalledWith("!r1", file, expect.any(Function)),
     );
+  });
+})
+
+describe("ChatShell: profile + notifications (Batch 6)", () => {
+  it("shows the display name on the user chip", async () => {
+    render(<ChatShell session={session} onSignedOut={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText("Walker")).toBeTruthy());
+  });
+
+  it("opens the profile panel, edits the name, and saves it", async () => {
+    render(<ChatShell session={session} onSignedOut={vi.fn()} />);
+    await waitFor(() => screen.getByText("Walker"));
+    fireEvent.click(screen.getByTitle("My profile"));
+
+    const dialog = screen.getByRole("dialog", { name: "My profile" });
+    expect(dialog).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Display name"), {
+      target: { value: "Walker K." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(setMyDisplayName).toHaveBeenCalledWith("Walker K."));
+    // the profile is re-read after saving
+    await waitFor(() => expect(vi.mocked(getMyProfile).mock.calls.length).toBeGreaterThanOrEqual(2));
+  });
+
+  it("notifies for messages in rooms the user is not looking at", async () => {
+    vi.mocked(getMessages).mockReturnValue([]);
+    let captured: Parameters<typeof startSync>[0] | null = null;
+    vi.mocked(startSync).mockImplementation(async (cb) => {
+      captured = cb;
+      cb.onStateChange("live");
+      cb.onRoomsChanged();
+    });
+    render(<ChatShell session={session} onSignedOut={vi.fn()} />);
+    await waitFor(() => screen.getByText("Jdoe"));
+    fireEvent.click(screen.getByText("Jdoe")); // now LOOKING at !r1
+
+    captured!.onIncomingMessage?.("!r2", "Announcements", "admin", "hello");
+    expect(showNotification).toHaveBeenCalledWith(
+      "MAKO CHAT — Announcements",
+      "admin: hello",
+    );
+
+    vi.mocked(showNotification).mockClear();
+    captured!.onIncomingMessage?.("!r1", "Jdoe", "jdoe", "you there?");
+    expect(showNotification).not.toHaveBeenCalled();
   });
 })

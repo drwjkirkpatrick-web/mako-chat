@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import type { MakoRoom } from "../matrix/client";
+import { mxcToHttp, type MakoRoom } from "../matrix/client";
 
 /**
  * The sidebar list of conversations, newest activity at the top, plus the
@@ -60,7 +60,17 @@ export function RoomList({
                 onClick={() => onSelect(room.roomId)}
               >
                 <span className="room-avatar" aria-hidden="true">
-                  {room.isDirect ? "🦈" : "👥"}
+                  {room.isDirect && room.otherAvatarMxc && mxcToHttp(room.otherAvatarMxc, 80, 80) ? (
+                    <img
+                      className="avatar-img"
+                      src={mxcToHttp(room.otherAvatarMxc, 80, 80)!}
+                      alt=""
+                    />
+                  ) : room.isDirect ? (
+                    "🦈"
+                  ) : (
+                    "👥"
+                  )}
                   {room.isDirect && (
                     <span className={"presence-dot p-" + room.otherPresence} />
                   )}

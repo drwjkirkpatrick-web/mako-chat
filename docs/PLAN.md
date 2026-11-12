@@ -65,7 +65,7 @@
 | 3 | Messaging core: sync loop, room list, DMs, timeline, send/receive | done (40 tests; offline shell + validation browser-verified) |
 | 4 | Presence, typing, read receipts | done (61 tests; offline shell regression-checked in browser) |
 | 5 | File sharing: upload/download/room files | done (73 tests; upload+progress, image/file rendering, files drawer, download links) |
-| 6 | Profiles, avatars, desktop notifications | — |
+| 6 | Profiles, avatars, desktop notifications | done (93 tests; profile editor, DM avatar images, notification decision logic) |
 | 7 | Admin mode: users, groups, announcements, storage stats | — |
 | 8 | Packaging: electron-builder NSIS + dmg, GitHub Actions release | — |
 | 9 | Hardening: server checklist, restore drill, final README, runbook | — |
