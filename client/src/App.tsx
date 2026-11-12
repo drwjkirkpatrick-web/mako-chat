@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
-import { BRAND } from "./brand";
+import { ChatShell } from "./components/ChatShell";
 import { LoginScreen } from "./components/LoginScreen";
-import { logout, restoreSession, type MakoSession } from "./matrix/client";
+import { restoreSession, type MakoSession } from "./matrix/client";
 
-// The whole app is one state machine at the top: a session, or no session.
-// Batches 3+ grow the "signed in" branch into the real messaging UI.
+// The whole app is one state machine at the top:
+//   no session -> LoginScreen      session -> ChatShell
+// plus a small "why did I end up signed out" notice the shell can set
+// (e.g. the server revoked an old session).
 export default function App() {
   const [session, setSession] = useState<MakoSession | null>(null);
   const [booted, setBooted] = useState(false);
+  const [signedOutNotice, setSignedOutNotice] = useState<string | null>(null);
 
-  // NOTE: restoreSession() runs once at startup — it reads saved credentials
-  // (if any) and comes back logged-in without the user typing anything again.
-  // WHY a flag: React 18+ double-invokes effects in dev (StrictMode); the
-  // flag just means "first paint decided", not "ran twice".
+  // restoreSession() runs once at startup: it reads saved credentials (if
+  // any) and comes back logged-in without asking the user to type again.
+  // NOTE: the flag exists because React double-invokes effects in dev
+  // (StrictMode) — the flag means "first render decided", not "ran once".
   useEffect(() => {
     setSession(restoreSession());
     setBooted(true);
@@ -21,33 +24,25 @@ export default function App() {
   if (!booted) return null;
 
   if (!session) {
-    return <LoginScreen onLogin={setSession} />;
+    return (
+      <LoginScreen
+        onLogin={(s) => {
+          setSession(s);
+          setSignedOutNotice(null);
+        }}
+        initialNotice={signedOutNotice}
+      />
+    );
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <span className="brand-mini">
-          {BRAND.emoji} {BRAND.name}
-        </span>
-        <span className="whoami">{session.userId}</span>
-        <button
-          className="btn-ghost"
-          onClick={async () => {
-            await logout();
-            setSession(null);
-          }}
-        >
-          Sign out
-        </button>
-      </header>
-      <main className="placeholder">
-        <h2>Foundation complete 🦈</h2>
-        <p>
-          Signed in as <code>{session.userId}</code> at{" "}
-          <code>{session.baseUrl}</code>. Conversations arrive in Batch 3.
-        </p>
-      </main>
-    </div>
+    <ChatShell
+      session={session}
+      onSignedOut={(reason) => {
+        // If the shell passes a reason, show it on the login screen.
+        setSignedOutNotice(reason ?? null);
+        setSession(null);
+      }}
+    />
   );
 }

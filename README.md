@@ -10,7 +10,7 @@ server keeps every message and file.
 
 ## Status
 
-- **Phase:** Batch 2 of 9 done — server stack + client foundation (branded login, session wrapper, 16 tests). Messaging UI next; not yet usable.
+- **Phase:** Batch 3 of 9 done — messaging core: sync loop, room list, conversations, DM creation (40 tests). Presence/typing/receipts next; not yet usable against a live server.
 - This repository is the single source of truth:
   - `docs/SPEC.md` — the full product specification (what we are building and why)
   - `docs/PLAN.md` — architecture, design decisions, and the batch-by-batch build plan

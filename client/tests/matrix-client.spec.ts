@@ -5,8 +5,19 @@ import type { MatrixClient } from "matrix-js-sdk";
 // server. The mock mirrors only the small surface the wrapper uses. If the
 // REAL SDK drifts, `npm run typecheck` (against real types) catches it —
 // these tests check OUR behaviour, not the SDK's.
+// NOTE: the wrapper now also imports enums (ClientEvent, RoomEvent, Preset,
+// SyncState) at module scope; the factory must define them so the module
+// loads in tests, even though the login tests never fire them.
 vi.mock("matrix-js-sdk", () => ({
   createClient: vi.fn(),
+  ClientEvent: { Sync: "sync", Room: "Room", AccountData: "accountData" },
+  RoomEvent: { Timeline: "Room.timeline", Name: "Room.name", MyMembership: "Room.myMembership" },
+  Preset: { TrustedPrivateChat: "trusted_private_chat" },
+  EventType: { Direct: "m.direct" },
+  SyncState: {
+    Error: "ERROR", Prepared: "PREPARED", Syncing: "SYNCING",
+    Stopped: "STOPPED", Catchup: "CATCHUP", Reconnecting: "RECONNECTING",
+  },
 }));
 
 import { createClient } from "matrix-js-sdk";

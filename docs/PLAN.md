@@ -62,7 +62,7 @@
 | 0 | Repo scaffold, spec, plan, state file | done |
 | 1 | Server stack: docker-compose, homeserver template, first-run, backup, deploy guide | done (config-review; live test at deploy) |
 | 2 | Client foundation: Electron+React+Vite scaffold, branding, login, session | done (16 tests; login + error paths verified in browser) |
-| 3 | Messaging core: room list, DMs, groups, timeline, send/receive | — |
+| 3 | Messaging core: sync loop, room list, DMs, timeline, send/receive | done (40 tests; offline shell + validation browser-verified) |
 | 4 | Presence, typing, read receipts | — |
 | 5 | File sharing: upload/download/room files | — |
 | 6 | Profiles, avatars, desktop notifications | — |
@@ -72,6 +72,15 @@
 
 Batch rule (Walker's): one batch at a time — build, test, commit, update
 README + Project_state, commit; Walker pushes to GitHub.
+
+### Polish backlog (collected during verification; fold into Batch 9)
+
+- While offline, the "New chat" input and Start button stay enabled —
+  consider disabling or greying them (Batch 3 browser check).
+- Empty-state text says "Pick a conversation, or start one" even when
+  there are none yet — tailor the wording to the empty-room case.
+- The offline status gives no manual retry button (SDK auto-retries); fine
+  for v1, revisit if users report it.
 
 ## 5. Testing & verification strategy
 

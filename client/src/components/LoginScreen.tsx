@@ -9,9 +9,11 @@ import type { MakoSession } from "../matrix/client";
 
 interface LoginScreenProps {
   onLogin: (session: MakoSession) => void;
+  /** Optional one-line note from a previous signed-out session. */
+  initialNotice?: string | null;
 }
 
-export function LoginScreen({ onLogin }: LoginScreenProps) {
+export function LoginScreen({ onLogin, initialNotice }: LoginScreenProps) {
   const [server, setServer] = useState(matrix.lastServerUrl());
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -83,6 +85,12 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
+
+        {initialNotice && (
+          <p className="notice" role="status">
+            {initialNotice}
+          </p>
+        )}
 
         {error && (
           <p className="error" role="alert">
