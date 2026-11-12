@@ -1,0 +1,100 @@
+:root {
+  --deep-sea: #0b3a53;
+  --deep-sea-2: #062638;
+  --teal: #14a3a3;
+  --foam: #e8f4f7;
+  --coral: #ff7a59;
+  --danger: #d64545;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  background: linear-gradient(160deg, var(--deep-sea-2), var(--deep-sea));
+  color: var(--foam);
+  min-height: 100vh;
+}
+
+/* ---------- login ---------- */
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.login-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 36px 32px;
+  width: 380px;
+  max-width: 100%;
+}
+.brand-header { text-align: center; margin-bottom: 26px; }
+.brand-emoji { font-size: 44px; display: block; }
+.brand-name { font-size: 24px; font-weight: 700; letter-spacing: 1px; margin-top: 4px; }
+.brand-tagline { color: rgba(232, 244, 247, 0.7); font-size: 13px; margin-top: 6px; }
+
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 13px; margin-bottom: 6px; color: rgba(232, 244, 247, 0.85); }
+.field input {
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--foam);
+  font-size: 15px;
+}
+.field input:focus { outline: 2px solid var(--teal); border-color: transparent; }
+
+.error {
+  background: rgba(214, 69, 69, 0.15);
+  border: 1px solid rgba(214, 69, 69, 0.5);
+  color: #ffd9d9;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin: 0 0 16px;
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--teal);
+  color: #04222b;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn:disabled { opacity: 0.6; cursor: wait; }
+
+/* ---------- signed-in shell (placeholder until Batch 3) ---------- */
+.app-shell { display: flex; flex-direction: column; min-height: 100vh; }
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 18px;
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.brand-mini { font-weight: 700; letter-spacing: 0.5px; }
+.whoami { color: rgba(232, 244, 247, 0.75); font-size: 14px; margin-left: auto; }
+.btn-ghost {
+  background: transparent;
+  color: var(--foam);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-ghost:hover { border-color: var(--teal); }
+.placeholder { margin: auto; text-align: center; max-width: 520px; padding: 32px; }
+.placeholder code { background: rgba(0, 0, 0, 0.3); padding: 2px 6px; border-radius: 6px; }

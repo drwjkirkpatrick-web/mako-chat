@@ -1,7 +1,7 @@
 # Project State: MAKO CHAT
 
 > **Last updated:** 2026-11-12
-> **Current phase:** build (Batch 1 complete)
+> **Current phase:** build (Batch 2 complete)
 > **Overall health:** green
 
 ---
@@ -18,9 +18,10 @@ files, and connect over LAN or Tailscale.
 - [x] Product spec captured verbatim in `docs/SPEC.md`
 - [x] Architecture + 9-batch build plan in `docs/PLAN.md`
 - [x] Batch 1 — server deployment stack authored + statically validated
+- [x] Batch 2 — client foundation: Electron/React scaffold, branded login, matrix-js-sdk 45 wrapper; 16 tests green, production build verified
 
 ### In Progress
-- [ ] Batch 2 — client foundation (Electron + React scaffold, login)
+- [ ] Batch 3 — messaging core (sync loop, room list, conversations)
 
 ### Not Started
 - [ ] Batches 2–9 (client, messaging, files, admin mode, packaging, docs)
@@ -45,11 +46,12 @@ files, and connect over LAN or Tailscale.
   all SDK calls in one client-side data module (D9).
 
 ## 5. Next Step (only ONE)
-> **Next:** Batch 2 — client foundation: Electron + React + Vite scaffold in
-> `client/`, MAKO branding, login screen, matrix-js-sdk session wrapper.
+> **Next:** Batch 3 — messaging core: wrapper gains the sync loop
+> (startSync/rooms/events), the app gains the room list + conversation view.
 
 ## 6. Environment & Tooling Notes
 - Dev host: Jetson (Linux ARM64, Docker daemon broken — no-root environment)
+- Client toolchain: Node 26; `npm test` / `npm run dev` in `client/`; install with `ELECTRON_SKIP_BINARY_DOWNLOAD=1` (no display)
 - Server target: institution Ubuntu machine with Docker + Tailscale
 - GitHub: `drwjkirkpatrick-web/mako-chat`, branch `main`; Walker pushes after commits
 - Hermes skills in use: project-state-management, software-development-workflows
@@ -57,6 +59,7 @@ files, and connect over LAN or Tailscale.
 ## 7. Recent Session Log
 - 2026-11-12: Repo scaffolded; SPEC/PLAN/Project_state written; Batch 1 queued.
 - 2026-11-12: Batch 1 — server stack (compose, synapse template, first-run, backup, deploy runbook) authored + static-validated; committed.
+- 2026-11-12: Batch 2 — client foundation built + verified (SDK-45 signatures checked against installed types; 16 tests; production build; login + error paths browser-checked); committed.
 
 ## 8. References
 - Spec: `docs/SPEC.md`

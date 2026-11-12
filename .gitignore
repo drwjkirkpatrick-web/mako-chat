@@ -1,6 +1,7 @@
 # --- Node / client ---
 node_modules/
 dist/
+dist-electron/
 build/
 out/
 release/

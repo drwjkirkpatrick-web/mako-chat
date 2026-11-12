@@ -10,7 +10,7 @@ server keeps every message and file.
 
 ## Status
 
-- **Phase:** Batch 1 of 9 done — server stack written; deployment runbook: `server/deploy.md`. Client build next; not yet usable.
+- **Phase:** Batch 2 of 9 done — server stack + client foundation (branded login, session wrapper, 16 tests). Messaging UI next; not yet usable.
 - This repository is the single source of truth:
   - `docs/SPEC.md` — the full product specification (what we are building and why)
   - `docs/PLAN.md` — architecture, design decisions, and the batch-by-batch build plan

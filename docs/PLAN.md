@@ -61,7 +61,7 @@
 |---|---|---|
 | 0 | Repo scaffold, spec, plan, state file | done |
 | 1 | Server stack: docker-compose, homeserver template, first-run, backup, deploy guide | done (config-review; live test at deploy) |
-| 2 | Client foundation: Electron+React+Vite scaffold, branding, login, session | — |
+| 2 | Client foundation: Electron+React+Vite scaffold, branding, login, session | done (16 tests; login + error paths verified in browser) |
 | 3 | Messaging core: room list, DMs, groups, timeline, send/receive | — |
 | 4 | Presence, typing, read receipts | — |
 | 5 | File sharing: upload/download/room files | — |
