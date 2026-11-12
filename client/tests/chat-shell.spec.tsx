@@ -29,6 +29,20 @@ vi.mock("../src/notify", () => ({
   showNotification: vi.fn(),
 }));
 
+// Batch 7: the admin layer is a module boundary too.
+vi.mock("../src/matrix/admin", () => ({
+  amIAdmin: vi.fn(),
+  listUsers: vi.fn().mockResolvedValue([]),
+  createUser: vi.fn(),
+  setUserSuspended: vi.fn(),
+  setUserAdmin: vi.fn(),
+  resetUserPassword: vi.fn(),
+  listRooms: vi.fn().mockResolvedValue([]),
+  getStorageStats: vi.fn().mockResolvedValue({
+    mediaFiles: 0, mediaBytes: 0, byUser: [], serverVersion: "x",
+  }),
+}));
+
 import {
   getMessages,
   getMyProfile,
@@ -43,6 +57,7 @@ import {
   stopSync,
 } from "../src/matrix/client";
 import { showNotification } from "../src/notify";
+import { amIAdmin } from "../src/matrix/admin";
 
 const session: MakoSession = {
   baseUrl: "http://mako-server:8008",
@@ -74,6 +89,7 @@ function wireSync() {
 
 beforeEach(() => {
   vi.mocked(showNotification).mockReset();
+  vi.mocked(amIAdmin).mockReset().mockResolvedValue(false);
   vi.mocked(getMyProfile).mockReset().mockResolvedValue({
     displayName: "Walker",
     avatarMxc: undefined,
@@ -251,5 +267,21 @@ describe("ChatShell: profile + notifications (Batch 6)", () => {
     vi.mocked(showNotification).mockClear();
     captured!.onIncomingMessage?.("!r1", "Jdoe", "jdoe", "you there?");
     expect(showNotification).not.toHaveBeenCalled();
+  });
+})
+
+describe("ChatShell: admin mode (Batch 7)", () => {
+  it("shows the admin dashboard button only to admins", async () => {
+    render(<ChatShell session={session} onSignedOut={vi.fn()} />);
+    await waitFor(() => screen.getByText("Jdoe"));
+    expect(screen.queryByTitle("Open the admin dashboard")).toBeNull();
+  });
+
+  it("opens the admin dashboard for admins", async () => {
+    vi.mocked(amIAdmin).mockResolvedValue(true);
+    render(<ChatShell session={session} onSignedOut={vi.fn()} />);
+    const open = await screen.findByTitle("Open the admin dashboard");
+    fireEvent.click(open);
+    await waitFor(() => expect(screen.getByRole("dialog", { name: "Admin dashboard" })).toBeTruthy());
   });
 })

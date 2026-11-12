@@ -423,3 +423,139 @@ body {
 .profile-actions { display: flex; gap: 10px; margin-top: 8px; }
 .profile-actions .btn { width: auto; padding: 10px 20px; }
 .profile-card .muted-hint { margin-top: 12px; padding: 0; }
+
+/* ---------- Batch 7: admin dashboard ---------- */
+.admin-open {
+  margin: 0 14px 4px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 166, 60, 0.45);
+  background: rgba(224, 166, 60, 0.12);
+  color: #ffe9c7;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+.admin-open:hover { background: rgba(224, 166, 60, 0.22); }
+
+.admin-card {
+  background: var(--deep-sea);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  width: 760px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+}
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 10px;
+}
+.admin-header h3 { margin: 0; }
+.admin-tabs { display: flex; gap: 6px; padding: 0 20px 12px; }
+.admin-tabs button {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--foam);
+  border-radius: 8px;
+  padding: 7px 16px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.admin-tabs button.selected {
+  background: rgba(20, 163, 163, 0.25);
+  border-color: var(--teal);
+}
+.admin-body { overflow-y: auto; padding: 0 20px 20px; }
+
+.admin-toolbar { display: flex; gap: 10px; padding: 6px 0 12px; }
+.admin-toolbar input {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--foam);
+  font-size: 14px;
+}
+.admin-toolbar .btn { width: auto; padding: 9px 16px; font-size: 14px; }
+
+.create-user {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.checkbox-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  margin: 4px 0 10px;
+}
+
+.admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.admin-row.suspended { opacity: 0.6; }
+.admin-user-main { display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap; }
+.admin-uid { font-family: ui-monospace, monospace; font-size: 13px; }
+.admin-dname { font-size: 13px; color: rgba(232, 244, 247, 0.7); }
+.admin-badges { display: flex; gap: 5px; }
+.badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.badge-admin { background: rgba(20, 163, 163, 0.3); }
+.badge-suspended { background: rgba(214, 69, 69, 0.35); }
+.admin-created { font-size: 11px; color: rgba(232, 244, 247, 0.5); }
+.admin-row-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.admin-room-id { font-size: 11px; color: rgba(232, 244, 247, 0.45); font-family: ui-monospace, monospace; }
+
+.inline-form { display: flex; gap: 6px; align-items: center; }
+.inline-form input {
+  width: 150px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--foam);
+  font-size: 12px;
+}
+
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+.stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+.stat-value { font-size: 22px; font-weight: 700; }
+.stat-label { font-size: 12px; color: rgba(232, 244, 247, 0.6); margin-top: 4px; }
+
+.admin-storage h4 { margin: 16px 0 10px; }
+.security-card {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 16px 12px 12px;
+}
+.security-card ul { margin: 0; padding-left: 18px; }
+.security-card li { font-size: 13px; line-height: 1.7; color: rgba(232, 244, 247, 0.85); }

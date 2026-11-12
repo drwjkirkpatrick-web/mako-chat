@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { BRAND } from "../brand";
 import { ensureNotificationPermission, showNotification } from "../notify";
 import { ProfilePanel, type ProfileUpdates } from "./ProfilePanel";
+import { AdminPanel } from "./AdminPanel";
+import { amIAdmin } from "../matrix/admin";
 import {
   getMessages,
   getMyProfile,
@@ -61,6 +63,8 @@ export function ChatShell({
   const [showProfile, setShowProfile] = useState(false);
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   // WHY a ref NEXT TO the state: the sync callbacks are registered once
   // (empty dependency array below), so anything they read later must come
@@ -69,10 +73,12 @@ export function ChatShell({
   const selectedIdRef = useRef<string | null>(null);
 
   // Batch 6: my profile (chip name/picture) + notification permission.
-  // Both fire-and-forget: neither may block the app from starting.
+  // Batch 7: quietly check whether this account may open the admin
+  // dashboard (most members are not admins — the check must never nag).
   useEffect(() => {
     void getMyProfile().then(setProfile).catch(() => {});
     void ensureNotificationPermission();
+    void amIAdmin().then(setIsAdmin).catch(() => setIsAdmin(false));
   }, []);
 
   useEffect(() => {
@@ -230,6 +236,17 @@ export function ChatShell({
           {STATUS_LABEL[status]}
         </div>
 
+        {isAdmin && (
+          <button
+            className="admin-open"
+            type="button"
+            title="Open the admin dashboard"
+            onClick={() => setShowAdmin(true)}
+          >
+            ⚙ Admin dashboard
+          </button>
+        )}
+
         <RoomList
           rooms={rooms}
           selectedId={selectedId}
@@ -262,6 +279,10 @@ export function ChatShell({
           </div>
         )}
       </main>
+
+      {showAdmin && (
+        <AdminPanel myUserId={session.userId} onClose={() => setShowAdmin(false)} />
+      )}
 
       {showProfile && profile && (
         <ProfilePanel

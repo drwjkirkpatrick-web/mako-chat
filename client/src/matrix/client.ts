@@ -557,6 +557,21 @@ export async function startDirectMessage(otherUserId: string): Promise<string> {
 // hints, never as facts.
 // ═════════════════════════════════════════════════════════════════════════
 
+/**
+ * Admin API access (Batch 7): the Synapse admin endpoints live OUTSIDE the
+ * Matrix spec, so the SDK does not wrap them. The admin module talks raw
+ * fetch with these credentials — this is the only bridge it needs, and it
+ * keeps the "only client.ts imports the SDK" boundary intact.
+ */
+export function adminCredentials(): {
+  baseUrl: string;
+  accessToken: string;
+  userId: string;
+} | null {
+  if (!client || !session) return null;
+  return { baseUrl: session.baseUrl, accessToken: session.accessToken, userId: session.userId };
+}
+
 /** Someone's presence from the local cache — no server call, no waiting. */
 export function getPresenceOf(userId: string): MakoPresence {
   const p = client?.getUser(userId)?.presence;
