@@ -1,7 +1,7 @@
 # Project State: MAKO CHAT
 
 > **Last updated:** 2026-11-12
-> **Current phase:** build (Batch 7 complete)
+> **Current phase:** build (Batch 8 complete)
 > **Overall health:** green
 
 ---
@@ -24,9 +24,10 @@ files, and connect over LAN or Tailscale.
 - [x] Batch 5 — file sharing: attach with upload progress, inline images (thumb→full), file cards, per-room files drawer, download links; 73 tests green
 - [x] Batch 6 — profiles & avatars: user chip, profile panel (display name + picture editor), DM avatars in room list, desktop notifications for unopened rooms; 93 tests green
 - [x] Batch 7 — admin dashboard (in-app, PLAN D3): account creation, reversible suspend/reactivate, password resets, admin rights, room overview, storage stats + security summary; 116 tests green
+- [x] Batch 8 — packaging: electron-builder (NSIS one-click .exe, .dmg x64+arm64), GitHub Actions test→build→release pipeline, Electron Save dialogs for downloads, client/INSTALL.md; packaging smoke-verified locally (asar contains exactly the compiled output)
 
 ### In Progress
-- [ ] Batch 8 — packaging: electron-builder NSIS + dmg, GitHub Actions release
+- [ ] Batch 9 — hardening: server checklist, restore drill, final README, runbook
 
 ### Not Started
 - [ ] Batches 2–9 (client, messaging, files, admin mode, packaging, docs)
@@ -51,9 +52,9 @@ files, and connect over LAN or Tailscale.
   all SDK calls in one client-side data module (D9).
 
 ## 5. Next Step (only ONE)
-> **Next:** Batch 8 — packaging: electron-builder config (NSIS .exe,
-> .dmg), GitHub Actions release workflow on windows/macos runners (D7),
-> download/save-dialog wiring in the Electron shell, install guide.
+> **Next:** Batch 9 — hardening & launch docs: deploy runbook refresh,
+> restore-drill checklist, final README (Phosphorus voice, plain language),
+> polish-backlog sweep from earlier batches.
 
 ## 6. Environment & Tooling Notes
 - Dev host: Jetson (Linux ARM64, Docker daemon broken — no-root environment)
@@ -71,6 +72,7 @@ files, and connect over LAN or Tailscale.
 - 2026-11-12: Batch 5 — file sharing built + verified (uploadContent/UploadOpts/mxcUrlToHttp verified; Parameters<> overload trap documented; 73 tests; browser regression clean).
 - 2026-11-12: Batch 6 — profiles/avatars/notifications built + verified (setDisplayName/setAvatarUrl/getProfileInfo one-arg forms verified; 93 tests; offline chip + panel gating browser-checked).
 - 2026-11-12: Batch 7 — admin mode built + verified (Admin API shapes verified against Synapse docs; v2 user endpoints, POST reset_password, reversible-suspend-over-erase decision; 116 tests; dashboard exercised end-to-end in browser via CDP fetch stub).
+- 2026-11-12: Batch 8 — packaging built + smoke-verified (electron-builder 26; author field + lean asar verified by unpacked build on Jetson; npm 12 allowScripts note; YAML 1.1 `on:` quirk noted; release/ cleaned).
 
 ## 8. References
 - Spec: `docs/SPEC.md`

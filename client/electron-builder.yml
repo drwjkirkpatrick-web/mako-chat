@@ -1,0 +1,42 @@
+# MAKO CHAT — electron-builder packaging (Batch 8, PLAN D7).
+#
+# Installers are built by GitHub Actions on windows/macos runners
+# (.github/workflows/release.yml) — a Linux/ARM64 dev box cannot produce
+# Windows .exe or macOS .dmg files. A local `npm run dist` builds the
+# platform you are ON (mostly useful for `--dir` smoke checks).
+#
+# Both installers are UNSIGNED (v1): Windows SmartScreen and macOS
+# Gatekeeper will warn on first launch — the override steps are documented
+# in client/INSTALL.md. Codesigning requires certificates the institution
+# can purchase later; the config keys go here when they do.
+
+appId: chat.mako.desktop
+productName: MAKO CHAT
+
+directories:
+  output: release
+
+# Only the compiled output ships — no node_modules (all deps are
+# build-time; see package.json note).
+files:
+  - dist/**
+  - dist-electron/**
+  - "!**/*.map"
+
+win:
+  target: nsis
+  artifactName: MAKO-CHAT-Setup-${version}.${ext}
+
+nsis:
+  # One click, for members without technical expertise (spec §3): run it,
+  # done — no wizard, no choices to get wrong.
+  oneClick: true
+  perMachine: false
+
+mac:
+  # Both Apple architectures — the institution's Macs may be either.
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+  artifactName: MAKO-CHAT-${version}-${arch}.${ext}
+  category: public.app-category.social-networking

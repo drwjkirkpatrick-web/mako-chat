@@ -8,7 +8,7 @@
 // HOW DEV WORKS: with MAKO_DEV=1 the window loads the Vite dev server
 // (live reload); otherwise it loads the production build from dist/.
 // WHY an explicit env var: Electron has no bundler NODE_ENV semantics.
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, session } from "electron";
 import * as path from "node:path";
 
 const isDev = process.env.MAKO_DEV === "1";
@@ -35,7 +35,15 @@ function createWindow(): void {
   else win.loadFile(path.join(__dirname, "..", "dist", "index.html"));
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  // Batch 8: shared files arrive as direct media links. Without this,
+  // Electron downloads silently to a hidden folder; members expect a
+  // normal Save dialog instead — pre-filled with the file's real name.
+  session.defaultSession.on("will-download", (_event, item) => {
+    item.setSaveDialogOptions({ defaultPath: item.getFilename() });
+  });
+  createWindow();
+});
 
 // Standard desktop-app behaviour:
 app.on("window-all-closed", () => {

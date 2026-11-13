@@ -67,7 +67,7 @@
 | 5 | File sharing: upload/download/room files | done (73 tests; upload+progress, image/file rendering, files drawer, download links) |
 | 6 | Profiles, avatars, desktop notifications | done (93 tests; profile editor, DM avatar images, notification decision logic) |
 | 7 | Admin mode: users, groups, announcements, storage stats | done (116 tests; dashboard verified in browser with stubbed admin API — reversible suspend chosen over destructive erase) |
-| 8 | Packaging: electron-builder NSIS + dmg, GitHub Actions release | — |
+| 8 | Packaging: electron-builder NSIS + dmg, GitHub Actions release | done (local Linux --dir packaging smoke verified config + asar contents; win/mac installers build in CI on tag) |
 | 9 | Hardening: server checklist, restore drill, final README, runbook | — |
 
 Batch rule (Walker's): one batch at a time — build, test, commit, update

@@ -12,6 +12,7 @@ shell; React provides everything the user sees.
 | `npm test` | Vitest unit suite (no network, no server needed). |
 | `npm run typecheck` | TypeScript against the REAL matrix-js-sdk types — this is what catches SDK drift. |
 | `npm run build` | Full production build (`dist/` + `dist-electron/`). |
+| `npm run dist:win` / `dist:mac` / `dist` | Build the installer for this platform (see `INSTALL.md` — real Windows/macOS installers come from CI). |
 
 ## Note on bundle size
 

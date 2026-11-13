@@ -10,11 +10,19 @@ server keeps every message and file.
 
 ## Status
 
-- **Phase:** Batch 7 of 9 done — admin dashboard inside the app: account create/suspend/reactivate, password resets, admin rights, room overview, storage stats (116 tests). Packaging next; not yet usable against a live server.
+- **Phase:** Batch 8 of 9 done — packaging: NSIS one-click .exe + both-arch .dmg via GitHub Actions (tag → installers), Save dialogs for downloads, member install guide (116 tests). Hardening/launch docs next.
 - This repository is the single source of truth:
   - `docs/SPEC.md` — the full product specification (what we are building and why)
   - `docs/PLAN.md` — architecture, design decisions, and the batch-by-batch build plan
   - `Project_state.md` — where the build stands right now
+
+## Getting it onto members' computers
+
+Push a tag (e.g. `v0.8.0`) and GitHub Actions builds the installers on real
+Windows/macOS runners: a one-click `.exe` and `.dmg` files for both Mac
+architectures, attached to the release page — ready for the USB stick.
+Member instructions (including the one-time unsigned-app security notices):
+`client/INSTALL.md`.
 
 ## How it fits together (plain language)
 
