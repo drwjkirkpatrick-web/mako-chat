@@ -1,5 +1,10 @@
 # 🦈 MAKO CHAT
 
+[![Release build](https://github.com/drwjkirkpatrick-web/mako-chat/actions/workflows/release.yml/badge.svg)](https://github.com/drwjkirkpatrick-web/mako-chat/actions/workflows/release.yml)
+[![Release](https://img.shields.io/github/v/release/drwjkirkpatrick-web/mako-chat)](https://github.com/drwjkirkpatrick-web/mako-chat/releases)
+[![Tests](https://img.shields.io/badge/tests-119%20passing-brightgreen)](client/README.md)
+![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS-14a3a3)
+
 **Messaging that belongs to your institution — not to a tech company.**
 
 Most chat apps rent you a conversation. MAKO CHAT gives your school,
