@@ -141,6 +141,13 @@ body {
   color: var(--foam);
   font-size: 13px;
 }
+/* Batch 9: disabled must LOOK disabled — an offline Start button that
+   still glows invites clicks the server cannot honour. */
+.new-chat input:disabled,
+.new-chat button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .btn-small { padding: 8px 12px; font-size: 13px; width: auto; }
 
 .room-list ul { list-style: none; margin: 0; padding: 0; }
