@@ -285,3 +285,33 @@ describe("ChatShell: admin mode (Batch 7)", () => {
     await waitFor(() => expect(screen.getByRole("dialog", { name: "Admin dashboard" })).toBeTruthy());
   });
 })
+
+describe("ChatShell: Batch 9 polish", () => {
+  it("shows the nothing-yet wording when there are no conversations", async () => {
+    vi.mocked(listRooms).mockReturnValue([]);
+    render(<ChatShell session={session} onSignedOut={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByText("Nothing here yet — start your first conversation from the sidebar.")).toBeTruthy(),
+    );
+  });
+
+  it("shows the pick wording once conversations exist but none is open", async () => {
+    render(<ChatShell session={session} onSignedOut={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByText("Pick a conversation from the sidebar.")).toBeTruthy(),
+    );
+  });
+
+  it("disables the new-chat form while offline", async () => {
+    vi.mocked(startSync).mockImplementation(async (cb) => {
+      cb.onStateChange("offline");
+      cb.onRoomsChanged();
+    });
+    render(<ChatShell session={session} onSignedOut={vi.fn()} />);
+    const input = await screen.findByLabelText(/Start a new chat/i);
+    const start = screen.getByRole("button", { name: "Start" });
+    expect(input).toHaveProperty("disabled", true);
+    expect(start).toHaveProperty("disabled", true);
+    expect(screen.getByText(/Waiting for the connection/i)).toBeTruthy();
+  });
+})

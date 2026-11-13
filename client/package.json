@@ -1,7 +1,7 @@
 {
   "name": "mako-chat-client",
   "productName": "MAKO CHAT",
-  "version": "0.8.0",
+  "version": "1.0.0",
   "description": "MAKO CHAT \u2014 private institutional messaging desktop client (Electron + React)",
   "author": "MAKO CHAT project",
   "private": true,

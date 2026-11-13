@@ -166,3 +166,32 @@ reach it; prefer the posture above.
 | synapse crash-loops on database errors | password mismatch: fix `.env`, re-run `first-run.sh`, `up -d` |
 | a user can't connect from another machine | wrong address: LAN uses the server IP, Tailscale uses `mako-server:8008`; on their device run `tailscale status` |
 | files won't send | disk space (`df -h`) and the 100 MB upload cap |
+
+## 14. Launch checklist
+
+Run through this ONCE, before telling members to install anything.
+Every box matters — especially the restore drill.
+
+- [ ] `docker compose ps` — both services healthy
+- [ ] `curl http://localhost:8008/health` — answers `OK`
+- [ ] First admin account created (§6); its password stored somewhere safe
+- [ ] `#announcements` room exists (§7)
+- [ ] A second test account created from the admin dashboard, logged in on
+      ANOTHER machine
+- [ ] Two-way chat verified between them: text, a file, an image, "Seen"
+      on both sides
+- [ ] Presence dot and typing indicator visible on both sides
+- [ ] A test account suspended → confirmed locked out → reactivated →
+      confirmed working again
+- [ ] Nightly backups installed (root crontab, §9) and `backups/` contains
+      one night's files
+- [ ] **RESTORE DRILL:** actually restore the last backup (§10) on this or
+      a scratch machine. An untested backup is a hope, not a backup.
+- [ ] One copy of `backups/` taken off the machine (USB or NAS)
+- [ ] Tailscale healthy (`tailscale status`); a remote device reaches
+      `http://mako-server:8008/health`
+- [ ] Installers built: version tag pushed, GitHub Actions run green,
+      `.exe` + `.dmg` downloaded from the release page
+- [ ] One real Windows machine AND one real Mac installed from the USB
+      stick, including the one-time security-notice override
+      (`client/INSTALL.md`)

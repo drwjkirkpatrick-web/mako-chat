@@ -11,12 +11,15 @@ export function RoomList({
   onSelect,
   onNewChat,
   newChatError,
+  canStartChats,
 }: {
   rooms: MakoRoom[];
   selectedId: string | null;
   onSelect: (roomId: string) => void;
   onNewChat: (input: string) => void;
   newChatError: string | null;
+  /** False while disconnected: starting a chat NEEDS the server. */
+  canStartChats: boolean;
 }) {
   const [newChat, setNewChat] = useState("");
 
@@ -36,11 +39,15 @@ export function RoomList({
           placeholder="New chat — enter a username"
           value={newChat}
           onChange={(e) => setNewChat(e.target.value)}
+          disabled={!canStartChats}
         />
-        <button className="btn btn-small" type="submit">
+        <button className="btn btn-small" type="submit" disabled={!canStartChats}>
           Start
         </button>
       </form>
+      {!canStartChats && (
+        <p className="muted-hint">Waiting for the connection before starting new chats…</p>
+      )}
 
       {newChatError && (
         <p className="error" role="alert">

@@ -68,19 +68,27 @@
 | 6 | Profiles, avatars, desktop notifications | done (93 tests; profile editor, DM avatar images, notification decision logic) |
 | 7 | Admin mode: users, groups, announcements, storage stats | done (116 tests; dashboard verified in browser with stubbed admin API — reversible suspend chosen over destructive erase) |
 | 8 | Packaging: electron-builder NSIS + dmg, GitHub Actions release | done (local Linux --dir packaging smoke verified config + asar contents; win/mac installers build in CI on tag) |
-| 9 | Hardening: server checklist, restore drill, final README, runbook | — |
+| 9 | Hardening: server checklist, restore drill, final README, runbook | done (launch checklist in deploy.md §14; polish sweep shipped; Phosphorus README; v1.0.0) |
 
 Batch rule (Walker's): one batch at a time — build, test, commit, update
 README + Project_state, commit; Walker pushes to GitHub.
 
-### Polish backlog (collected during verification; fold into Batch 9)
+### Polish backlog — RESOLVED (Batch 9)
 
-- While offline, the "New chat" input and Start button stay enabled —
-  consider disabling or greying them (Batch 3 browser check).
-- Empty-state text says "Pick a conversation, or start one" even when
-  there are none yet — tailor the wording to the empty-room case.
-- The offline status gives no manual retry button (SDK auto-retries); fine
-  for v1, revisit if users report it.
+- ✅ Offline: the "New chat" input and Start button now disable with a
+  "waiting for the connection" hint.
+- ✅ Empty-state wording now has two variants (nothing yet vs. pick one).
+- ✅ Manual retry button: WON'T FIX for v1 by decision — the SDK retries
+  automatically and the status line shows it; revisit only if members
+  report it.
+
+### After v1.0
+
+The spec's long-term vision (voice/video calls, screen sharing, mobile
+apps, department spaces, integrations) is the roadmap. The natural next
+steps in order: (1) first real deployment + the launch checklist, then (2)
+end-to-end encryption (D6), then (3) whichever vision item the
+institution needs most.
 
 ## 5. Testing & verification strategy
 

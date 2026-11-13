@@ -253,6 +253,7 @@ export function ChatShell({
           onSelect={selectRoom}
           onNewChat={handleNewChat}
           newChatError={newChatError}
+          canStartChats={status !== "offline"}
         />
       </aside>
 
@@ -270,12 +271,19 @@ export function ChatShell({
             onRead={handleRead}
             onAttach={handleAttach}
           />
+        ) : rooms.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-shark" aria-hidden="true">
+              {BRAND.emoji}
+            </div>
+            <p>Nothing here yet — start your first conversation from the sidebar.</p>
+          </div>
         ) : (
           <div className="empty-state">
             <div className="empty-shark" aria-hidden="true">
               {BRAND.emoji}
             </div>
-            <p>Pick a conversation, or start one from the sidebar.</p>
+            <p>Pick a conversation from the sidebar.</p>
           </div>
         )}
       </main>
